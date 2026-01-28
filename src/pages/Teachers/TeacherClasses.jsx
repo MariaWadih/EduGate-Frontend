@@ -1,58 +1,48 @@
-import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BookOpen, Users, ChevronRight, Clock } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { Button, Badge, Card, Select } from '../components/atoms';
+import { Button, Badge, Card, Select } from '../../components/atoms';
+import { useAuth, useTeacherClasses } from '../../hooks';
+
 
 const TeacherClasses = () => {
     const { user } = useAuth();
-    const [classCards, setClassCards] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: classes = [], loading, error } = useTeacherClasses();
     const [selectedCourse, setSelectedCourse] = useState('All');
     const [selectedGrade, setSelectedGrade] = useState('All');
-    const [error, setError] = useState(null);
 
-    useEffect(() => {
-        client.get('/teacher/classes')
-            .then(res => {
-                const classes = res.data;
-                const cards = [];
-                classes.forEach(cls => {
-                    cls.subjects.forEach(subject => {
-                        // Find schedule for this subject
-                        const subjectSchedule = cls.schedules?.filter(s => s.subject_id === subject.id) || [];
-                        let scheduleString = "TBA";
+    const classCards = React.useMemo(() => {
+        const cards = [];
+        if (!Array.isArray(classes)) return cards;
 
-                        if (subjectSchedule.length > 0) {
-                            // Group by time or just show first occurrence pattern for simplicity
-                            const days = subjectSchedule.map(s => s.day_of_week.substring(0, 3)).join(', ');
-                            const time = `${subjectSchedule[0].start_time.substring(0, 5)}`;
-                            scheduleString = `${days} ${time}`;
-                        }
+        classes.forEach(cls => {
+            if (!cls || !cls.subjects) return;
+            cls.subjects.forEach(subject => {
+                const subjectSchedule = (cls.schedules || []).filter(s => s.subject_id === subject.id);
+                let scheduleString = "TBA";
 
-                        cards.push({
-                            id: `${cls.id}-${subject.id}`,
-                            classId: cls.id,
-                            className: cls.name,
-                            gradeNumber: cls.name.replace(/\D/g, ''),
-                            section: cls.section,
-                            subjectName: subject.name,
-                            studentCount: cls.students_count,
-                            schedule: scheduleString
-                        });
-                    });
+                if (subjectSchedule.length > 0) {
+                    const days = subjectSchedule.map(s => s.day_of_week.substring(0, 3)).join(', ');
+                    const time = `${subjectSchedule[0].start_time.substring(0, 5)}`;
+                    scheduleString = `${days} ${time}`;
+                }
+
+                cards.push({
+                    id: `${cls.id}-${subject.id}`,
+                    classId: cls.id,
+                    className: cls.name,
+                    gradeNumber: cls.name.replace(/\D/g, ''),
+                    section: cls.section,
+                    subjectName: subject.name,
+                    studentCount: cls.students_count,
+                    schedule: scheduleString
                 });
-                setClassCards(cards);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error("Failed to fetch classes:", err);
-                setError("Could not load your classes.");
-                setLoading(false);
             });
-    }, [user.name]);
+        });
+        return cards;
+    }, [classes]);
+
 
     // Extract unique options
     const uniqueCourses = ['All', ...new Set(classCards.map(c => c.subjectName))].sort();
@@ -209,4 +199,12 @@ const TeacherClasses = () => {
     );
 };
 
-export default TeacherClasses;
+import ErrorBoundary from '../../components/ErrorBoundary';
+
+const TeacherClassesWithBoundary = () => (
+    <ErrorBoundary>
+        <TeacherClasses />
+    </ErrorBoundary>
+);
+
+export default TeacherClassesWithBoundary;

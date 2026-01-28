@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks';
 import client from '../api/client';
 import { User, Mail, Lock, Shield, Phone, Save, CheckCircle2 } from 'lucide-react';
 import { Button, Card, Avatar, Input, Toggle } from '../components/atoms';

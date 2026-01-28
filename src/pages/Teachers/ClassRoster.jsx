@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import client from '../api/client';
+import client from '../../api/client';
 import { motion } from 'framer-motion';
 import { Users, Mail, User } from 'lucide-react';
-import { Avatar, Badge, Card } from '../components/atoms';
-import { Table } from '../components/molecules';
+import { Avatar, Badge, Card } from '../../components/atoms';
+import { Table } from '../../components/molecules';
 
 const ClassRoster = () => {
     const { id } = useParams();

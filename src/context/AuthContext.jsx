@@ -1,35 +1,35 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import client from '../api/client';
+import React, { createContext, useState, useEffect } from 'react';
+import { authService } from '../services';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            client.get('/me')
-                .then(res => setUser(res.data))
-                .catch(() => localStorage.removeItem('token'))
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
+        // Just try to get user. If 401, we just aren't logged in.
+        authService.getMe()
+            .then(res => setUser(res.data))
+            .catch(() => setUser(null))
+            .finally(() => setLoading(false));
     }, []);
 
     const login = async (email, password) => {
-        const res = await client.post('/login', { email, password });
-        localStorage.setItem('token', res.data.access_token);
+        await authService.csrf(); // Get cookie first
+        const res = await authService.login(email, password);
         setUser(res.data.user);
         return res.data.user;
     };
 
     const logout = async () => {
-        await client.post('/logout');
-        localStorage.removeItem('token');
-        setUser(null);
+        try {
+            await authService.logout();
+            setUser(null);
+            window.location.href = '/login';
+        } catch (err) {
+            console.error('Logout failed', err);
+        }
     };
 
     return (
@@ -39,4 +39,3 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export const useAuth = () => useContext(AuthContext);

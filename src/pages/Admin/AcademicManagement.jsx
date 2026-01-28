@@ -5,9 +5,10 @@ import {
     Edit2, Trash2, Copy, PlusCircle, User, Calendar as CalendarIcon,
     X, Check, LayoutGrid, List
 } from 'lucide-react';
-import client from '../api/client';
-import { Button, Badge, Avatar, Card, Input, Select } from '../components/atoms';
-import { Modal, FormField, SelectField, Table, SearchBar } from '../components/molecules';
+import { academicService } from '../../services';
+import client from '../../api/client';
+import { Button, Badge, Avatar, Card, Input, Select } from '../../components/atoms';
+import { Modal, FormField, SelectField, Table, SearchBar } from '../../components/molecules';
 
 // Note: Removed local ActionButton, IconButton, and Modal components in favor of Atomic Design components
 
@@ -73,20 +74,25 @@ const AcademicManagement = () => {
     const fetchHierarchy = async () => {
         try {
             setLoading(true);
-            const response = await client.get('/academic-hierarchy');
-            setAcademicData(response.data);
+            const response = await academicService.getHierarchy();
+            // Critical safety check: Ensure data is an array
+            const data = Array.isArray(response.data) ? response.data : [];
+            if (!Array.isArray(response.data)) {
+                console.error('Academic Data is not an array:', response.data);
+            }
+            setAcademicData(data);
 
             // Expand first grade by default
-            if (response.data.length > 0) {
-                setExpandedGrades({ [response.data[0].name]: true });
-                if (response.data[0].sections.length > 0) {
-                    setExpandedSections({ [response.data[0].sections[0].id]: true });
+            if (data.length > 0) {
+                setExpandedGrades({ [data[0].name]: true });
+                if (data[0].sections && data[0].sections.length > 0) {
+                    setExpandedSections({ [data[0].sections[0].id]: true });
                 }
 
                 // Initialize filters if empty
-                if (!selectedGrade) setSelectedGrade(response.data[0].name);
-                if (!selectedSection && response.data[0].sections.length > 0) {
-                    setSelectedSection(response.data[0].sections[0].name);
+                if (!selectedGrade) setSelectedGrade(data[0].name);
+                if (!selectedSection && (data[0].sections || []).length > 0) {
+                    setSelectedSection(data[0].sections[0].name);
                 }
             }
         } catch (err) {
@@ -99,13 +105,12 @@ const AcademicManagement = () => {
 
     const fetchSchedules = async () => {
         try {
-            // Find class_id from academicData
             const grade = academicData.find(g => g.name === selectedGrade);
             const section = grade?.sections.find(s => s.name === selectedSection);
 
             if (section) {
-                const response = await client.get(`/schedules?class_id=${section.id}`);
-                setSchedules(response.data);
+                const response = await academicService.getSchedules({ params: { class_id: section.id } });
+                setSchedules(Array.isArray(response.data) ? response.data : []);
             }
         } catch (err) {
             console.error('Failed to fetch schedules:', err);
@@ -130,7 +135,7 @@ const AcademicManagement = () => {
         if (!newSubjectName.trim()) return;
         try {
             setLoading(true);
-            await client.post('/academic/grade-subject', {
+            await academicService.createGradeSubject({
                 grade_name: activeGrade,
                 subject_name: newSubjectName,
                 subject_code: newSubjectCode
@@ -152,7 +157,7 @@ const AcademicManagement = () => {
         if (!newGradeName.trim()) return;
         try {
             setLoading(true);
-            await client.post('/academic/grade', {
+            await academicService.createGrade({
                 name: newGradeName
             });
             setNewGradeName('');
@@ -170,7 +175,7 @@ const AcademicManagement = () => {
         if (!newSectionName.trim()) return;
         try {
             setLoading(true);
-            await client.post('/academic/section', {
+            await academicService.createSection({
                 grade_name: activeGrade,
                 section: newSectionName
             });
@@ -190,13 +195,11 @@ const AcademicManagement = () => {
         try {
             setLoading(true);
             if (itemType === 'grade') {
-                await client.delete('/academic/grade', { data: { name: activeItem.name } });
+                await academicService.deleteGrade({ name: activeItem.name });
             } else if (itemType === 'section') {
-                await client.delete(`/academic/section/${activeItem.id}`);
+                await academicService.deleteSection(activeItem.id);
             } else if (itemType === 'subject') {
-                await client.delete('/academic/grade-subject', {
-                    data: { grade_name: activeGrade, subject_id: activeItem.id }
-                });
+                await academicService.deleteGradeSubject({ grade_name: activeGrade, subject_id: activeItem.id });
             }
             setShowDeleteModal(false);
             await fetchHierarchy();
@@ -213,11 +216,11 @@ const AcademicManagement = () => {
         try {
             setLoading(true);
             if (itemType === 'grade') {
-                await client.put('/academic/grade', { old_name: activeItem.name, new_name: editValue });
+                await academicService.updateGrade({ old_name: activeItem.name, new_name: editValue });
             } else if (itemType === 'section') {
-                await client.put(`/academic/section/${activeItem.id}`, { name: editValue });
+                await academicService.updateSection(activeItem.id, { name: editValue });
             } else if (itemType === 'subject') {
-                await client.put(`/academic/subject/${activeItem.id}`, { name: editValue });
+                await academicService.updateSubject(activeItem.id, { name: editValue });
             }
             setShowEditModal(false);
             await fetchHierarchy();
@@ -238,7 +241,7 @@ const AcademicManagement = () => {
             if (!section) return alert('Please select a grade and section');
 
             setActionLoading(true);
-            await client.post('/schedules', {
+            await academicService.createSchedule({
                 ...newSchedule,
                 class_id: section.id
             });
@@ -263,7 +266,7 @@ const AcademicManagement = () => {
         if (!window.confirm('Are you sure you want to delete this class entry?')) return;
         try {
             setActionLoading(true);
-            await client.delete(`/schedules/${scheduleId}`);
+            await academicService.deleteSchedule(scheduleId);
             await fetchSchedules();
         } catch (err) {
             console.error('Failed to delete schedule:', err);
@@ -274,18 +277,16 @@ const AcademicManagement = () => {
     };
 
 
-    const filteredData = academicData.filter(grade =>
-        grade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        grade.sections.some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filteredData = (Array.isArray(academicData) ? academicData : []).filter(grade =>
+        (grade.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (grade.sections || []).some(s => (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
 
 
     if (loading && academicData.length === 0) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                <BookOpen size={48} color="var(--primary)" />
-            </motion.div>
+            <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>Loading Academic Data...</div>
         </div>
     );
 
@@ -383,7 +384,7 @@ const AcademicManagement = () => {
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                                            {grade.name} <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1.1rem', marginLeft: '8px' }}>({grade.sections.length} Sections)</span>
+                                            {grade.name} <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1.1rem', marginLeft: '8px' }}>({(grade.sections || []).length} Sections)</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                             <Button
@@ -435,7 +436,7 @@ const AcademicManagement = () => {
                                             <div style={{ padding: '32px' }}>
                                                 {/* Sections */}
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '40px' }}>
-                                                    {grade.sections.map((section) => (
+                                                    {(grade.sections || []).map((section) => (
                                                         <div key={section.id} style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
                                                             <div
                                                                 onClick={() => toggleSection(section.id)}
@@ -479,7 +480,7 @@ const AcademicManagement = () => {
                                                                                     <Badge bg="var(--primary-light)" color="var(--primary)" style={{ fontWeight: 800 }}>{section.students_count} Total</Badge>
                                                                                 </div>
                                                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                                                                                    {section.students.length > 0 ? (
+                                                                                    {(section.students || []).length > 0 ? (
                                                                                         section.students.slice(0, 4).map((student, idx) => (
                                                                                             <div key={student.id} style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px', background: '#F9FAFB' }}>
                                                                                                 <div style={{ position: 'relative' }}>
@@ -517,7 +518,7 @@ const AcademicManagement = () => {
                                                             </Table.Row>
                                                         </Table.Head>
                                                         <Table.Body>
-                                                            {grade.subjects.map((sub) => (
+                                                            {(grade.subjects || []).map((sub) => (
                                                                 <Table.Row key={sub.id}>
                                                                     <Table.Cell style={{ fontWeight: 700 }}>{sub.name}</Table.Cell>
                                                                     <Table.Cell><code style={{ color: 'var(--primary)', fontWeight: 600 }}>{sub.code}</code></Table.Cell>
@@ -780,7 +781,7 @@ const AcademicManagement = () => {
                         required
                     >
                         <option value="">Select Subject</option>
-                        {academicData.find(g => g.name === selectedGrade)?.subjects.map(s => (
+                        {(academicData.find(g => g.name === selectedGrade)?.subjects || []).map(s => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                     </SelectField>
@@ -846,7 +847,7 @@ const AcademicManagement = () => {
                     {schedules.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontWeight: 600 }}>No schedule entries found.</div>
                     ) : (
-                        schedules.sort((a, b) => a.day_of_week.localeCompare(b.day_of_week)).map(s => (
+                        [...schedules].sort((a, b) => a.day_of_week.localeCompare(b.day_of_week)).map(s => (
                             <div key={s.id} style={{ padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-main)' }}>
                                 <div>
                                     <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>{s.subject.name}</div>
@@ -902,4 +903,12 @@ const AcademicManagement = () => {
     );
 };
 
-export default AcademicManagement;
+import ErrorBoundary from '../../components/ErrorBoundary';
+
+const AcademicManagementWithBoundary = () => (
+    <ErrorBoundary>
+        <AcademicManagement />
+    </ErrorBoundary>
+);
+
+export default AcademicManagementWithBoundary;

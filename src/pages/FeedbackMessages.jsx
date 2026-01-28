@@ -1,41 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import client from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, useFeedback } from '../hooks';
+import { feedbackService } from '../services';
 import { MessageSquare, Send, Clock, Trash2, ShieldAlert, AlertCircle } from 'lucide-react';
 import { Button, Card, Avatar } from '../components/atoms';
 import { TextareaField } from '../components/molecules';
 
 const FeedbackMessages = () => {
     const { user } = useAuth();
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: feedbackData, loading, refetch: fetchData } = useFeedback();
+    const items = Array.isArray(feedbackData) ? feedbackData : [];
     const [msg, setMsg] = useState('');
     const [type, setType] = useState('feedback');
     const [submitting, setSubmitting] = useState(false);
 
-    const fetchData = () => {
-        setLoading(true);
-        client.get('/feedback')
-            .then(res => {
-                setItems(res.data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
-
-    useEffect(() => {
-        fetchData();
-    }, []);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!msg.trim()) return;
         setSubmitting(true);
-        client.post('/feedback', { message: msg, type })
+        feedbackService.create({ message: msg, type })
             .then(() => {
                 setMsg('');
                 fetchData();
@@ -45,14 +29,14 @@ const FeedbackMessages = () => {
     };
 
     const handleMarkRead = (id) => {
-        client.put(`/feedback/${id}`, { is_read: true })
+        feedbackService.update(id, { is_read: true })
             .then(() => fetchData())
             .catch(err => console.error(err));
     };
 
     const handleDelete = (id) => {
         if (!window.confirm('Are you sure you want to delete this message?')) return;
-        client.delete(`/feedback/${id}`)
+        feedbackService.delete(id)
             .then(() => fetchData())
             .catch(err => console.error(err));
     };

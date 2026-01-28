@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Mail, Lock, ChevronRight, AlertCircle } from 'lucide-react';
 import { Button, Card, Input } from '../components/atoms';
@@ -21,7 +21,11 @@ const Login = () => {
             await login(email, password);
             navigate('/');
         } catch (err) {
-            setError(err.response?.data?.message || 'Invalid credentials');
+            if (!err.response) {
+                setError('Unable to connect to the server. Please check if the backend is running.');
+            } else {
+                setError(err.response?.data?.message || 'Invalid credentials');
+            }
         } finally {
             setIsLoading(false);
         }

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import { teacherService, academicService } from '../../services';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, AlertCircle, Save } from 'lucide-react';
-import { Button, Card } from '../components/atoms';
-import { FormField, SelectField, Table } from '../components/molecules';
+import { Button, Card } from '../../components/atoms';
+import { FormField, SelectField, Table } from '../../components/molecules';
 
 const MarkAttendance = () => {
     const [classes, setClasses] = useState([]);
@@ -14,14 +14,14 @@ const MarkAttendance = () => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        client.get('/teacher/classes').then(res => setClasses(res.data));
+        teacherService.getMyClasses().then(res => setClasses(res.data));
     }, []);
 
     const handleClassChange = (e) => {
         const classId = e.target.value;
         setSelectedClassId(classId);
         if (classId) {
-            client.get(`/classes/${classId}`).then(res => {
+            academicService.getClass(classId).then(res => {
                 setStudents(res.data.students);
                 const initial = {};
                 res.data.students.forEach(s => initial[s.id] = 'present');
@@ -39,7 +39,7 @@ const MarkAttendance = () => {
             status: attendance[id]
         }));
 
-        client.post('/attendance', {
+        teacherService.storeAttendance({
             class_id: selectedClassId,
             date,
             records

@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import { studentService } from '../../services';
 import { motion } from 'framer-motion';
 import {
     Users, Plus, Mail,
     Trash2, Edit2, GraduationCap, Star
 } from 'lucide-react';
-import { Button, Badge, Avatar, Card, ProgressBar } from '../components/atoms';
-import { SearchBar, Modal, FormField, Table, SelectField } from '../components/molecules';
+import { Button, Badge, Avatar, Card, ProgressBar } from '../../components/atoms';
+import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
+
+import { useStudents, useClasses } from '../../hooks';
 
 const Students = () => {
-    const [students, setStudents] = useState([]);
-    const [classes, setClasses] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: students, loading: studentsLoading, error: studentsError, refetch: refetchStudents } = useStudents();
+    const { data: classes, loading: classesLoading, error: classesError } = useClasses();
+
+    const studentsList = students || [];
+    const classesList = classes || [];
+
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -26,24 +31,13 @@ const Students = () => {
     });
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    const loading = studentsLoading || classesLoading;
+    const error = studentsError || classesError;
 
     const fetchData = async () => {
-        try {
-            const [sRes, cRes] = await Promise.all([
-                client.get('/students'),
-                client.get('/classes')
-            ]);
-            setStudents(sRes.data);
-            setClasses(cRes.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+        await refetchStudents();
     };
+
 
     const handleOpenAdd = () => {
         setIsEditMode(false);
@@ -69,9 +63,9 @@ const Students = () => {
         setIsSaving(true);
         try {
             if (isEditMode) {
-                await client.put(`/students/${editingId}`, formData);
+                await studentService.update(editingId, formData);
             } else {
-                await client.post('/students', formData);
+                await studentService.create(formData);
             }
             setIsModalOpen(false);
             fetchData();
@@ -85,21 +79,21 @@ const Students = () => {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this student account?')) return;
         try {
-            await client.delete(`/students/${id}`);
-            setStudents(prev => prev.filter(s => s.id !== id));
+            await studentService.delete(id);
+            fetchData();
         } catch (err) {
             alert('Delete failed: ' + (err.response?.data?.message || err.message));
         }
     };
 
-    const filteredStudents = students.filter(s => {
+    const filteredStudents = studentsList.filter(s => {
         const matchesSearch = s.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesGrade = selectedGrade === 'All' || s.school_class?.name === selectedGrade;
         return matchesSearch && matchesGrade;
     });
 
-    const topStudents = [...students]
+    const topStudents = [...studentsList]
         .sort((a, b) => (b.grades_avg_score || 0) - (a.grades_avg_score || 0))
         .slice(0, 5);
 
@@ -284,7 +278,7 @@ const Students = () => {
                             onChange={e => setFormData({ ...formData, class_id: e.target.value })}
                         >
                             <option value="">Select Class</option>
-                            {classes.map(c => (
+                            {classesList.map(c => (
                                 <option key={c.id} value={c.id}>{c.name} - {c.section}</option>
                             ))}
                         </SelectField>

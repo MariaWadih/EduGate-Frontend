@@ -1,24 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Clock, Book, Calendar, CheckSquare,
     Search, Filter, ChevronRight, BarChart2
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, useStudentDashboard } from '../../hooks';
 import { Button, Badge, Card, Input } from '../../components/atoms';
 import { SearchBar } from '../../components/molecules';
 
 const StudentDashboard = () => {
     const { user } = useAuth();
-    const [data, setData] = useState(null);
+    const { data, loading, error } = useStudentDashboard();
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        client.get('/analytics/student/overview').then(res => setData(res.data));
-    }, []);
+    if (loading || !data) return <div style={{ padding: '40px' }}>Loading Your Progress...</div>;
+    if (error) return <div style={{ padding: '40px', color: 'var(--danger)' }}>{error}</div>;
 
-    if (!data) return <div style={{ padding: '40px' }}>Loading Your Progress...</div>;
 
     const { metrics, grades, exams, assignments, insights } = data;
 

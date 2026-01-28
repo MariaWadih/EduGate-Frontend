@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import React, { useState } from 'react';
+import { announcementService } from '../services';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Calendar, User, Plus, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { Button, Badge, Card, Avatar } from '../components/atoms';
 import { Modal, FormField, SelectField, TextareaField } from '../components/molecules';
+import { useAuth, useAnnouncements, useClasses } from '../hooks';
+
 
 const Announcements = () => {
     const { user } = useAuth();
-    const [announcements, setAnnouncements] = useState([]);
-    const [classes, setClasses] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: announcements = [], loading: announcementsLoading, refetch: refetchAnnouncements } = useAnnouncements();
+    const { data: classes = [], loading: classesLoading } = useClasses();
     const [filter, setFilter] = useState('all');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,29 +21,17 @@ const Announcements = () => {
         target_class_id: ''
     });
 
+    const loading = announcementsLoading || classesLoading;
+
     const fetchData = () => {
-        setLoading(true);
-        Promise.all([
-            client.get('/announcements'),
-            client.get('/classes')
-        ]).then(([annRes, classRes]) => {
-            setAnnouncements(annRes.data);
-            setClasses(classRes.data);
-            setLoading(false);
-        }).catch(err => {
-            console.error(err);
-            setLoading(false);
-        });
+        refetchAnnouncements();
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
 
     const handleCreateSubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        client.post('/announcements', announcementForm)
+        announcementService.create(announcementForm)
             .then(() => {
                 setShowCreateModal(false);
                 setAnnouncementForm({ title: '', message: '', target_role: 'all', target_class_id: '' });

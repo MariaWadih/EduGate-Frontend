@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import { parentService, studentService } from '../../services';
 import { motion } from 'framer-motion';
 import {
     Users, Plus, Mail,
     Trash2, Edit2, Baby
 } from 'lucide-react';
-import { Button, Badge, Avatar } from '../components/atoms';
-import { SearchBar, Modal, FormField, Table } from '../components/molecules';
+import { Button, Badge, Avatar } from '../../components/atoms';
+import { SearchBar, Modal, FormField, Table } from '../../components/molecules';
 
 const Parents = () => {
     const [parents, setParents] = useState([]);
@@ -32,8 +32,8 @@ const Parents = () => {
     const fetchData = async () => {
         try {
             const [pRes, sRes] = await Promise.all([
-                client.get('/parents'),
-                client.get('/students')
+                parentService.getAll(),
+                studentService.getAll()
             ]);
             setParents(pRes.data);
             setStudents(sRes.data);
@@ -82,9 +82,9 @@ const Parents = () => {
         setIsSaving(true);
         try {
             if (isEditMode) {
-                await client.put(`/parents/${editingId}`, formData);
+                await parentService.update(editingId, formData);
             } else {
-                await client.post('/parents', formData);
+                await parentService.create(formData);
             }
             setIsModalOpen(false);
             fetchData();
@@ -98,8 +98,8 @@ const Parents = () => {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this parent account?')) return;
         try {
-            await client.delete(`/parents/${id}`);
-            setParents(prev => prev.filter(p => p.id !== id));
+            await parentService.delete(id);
+            fetchData();
         } catch (err) {
             alert('Delete failed: ' + (err.response?.data?.message || err.message));
         }

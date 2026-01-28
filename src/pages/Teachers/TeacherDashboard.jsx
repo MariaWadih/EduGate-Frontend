@@ -1,28 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import React from 'react';
 import { motion } from 'framer-motion';
 import {
     Clock, Users, BookOpen, Star,
     ChevronRight, Play, Book, CheckSquare,
     Search, Filter, Calendar
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, useTeacherDashboard } from '../../hooks';
 import { Link } from 'react-router-dom';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 
 const TeacherDashboard = () => {
     const { user } = useAuth();
-    const [data, setData] = useState(null);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        client.get('/analytics/teacher/overview')
-            .then(res => setData(res.data))
-            .catch(err => {
-                console.error("Dashboard error:", err);
-                setError(err.response?.data?.error || err.message || "Failed to load dashboard data");
-            });
-    }, []);
+    const { data, loading, error } = useTeacherDashboard();
 
     if (error) return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -34,7 +23,8 @@ const TeacherDashboard = () => {
         </div>
     );
 
-    if (!data) return (
+    if (loading || !data) return (
+
         <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
                 <BookOpen size={48} color="var(--primary)" />

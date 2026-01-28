@@ -5,7 +5,7 @@ const Button = ({
     variant = 'primary',
     className = '',
     type = 'button',
-    icon: Icon,
+    icon,
     ...props
 }) => {
     const baseClass = 'btn';
@@ -17,7 +17,11 @@ const Button = ({
             className={`${baseClass} ${variantClass} ${className}`}
             {...props}
         >
-            {Icon && <Icon size={18} />}
+            {/* Check if icon is a valid React Element (already instantiated) or a Component function */}
+            {React.isValidElement(icon)
+                ? icon
+                : (icon && React.createElement(icon, { size: 18 }))
+            }
             {children}
         </button>
     );

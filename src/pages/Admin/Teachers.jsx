@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import client from '../api/client';
+import { teacherService } from '../../services';
 import { motion } from 'framer-motion';
 import {
     Users, Plus, Mail,
     Trash2, Edit2
 } from 'lucide-react';
-import { Button, Badge, Avatar } from '../components/atoms';
-import { SearchBar, Modal, FormField, Table, SelectField } from '../components/molecules';
+import { Button, Badge, Avatar } from '../../components/atoms';
+import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
+
+import { useTeachers, useClasses, useSubjects } from '../../hooks';
 
 const Teachers = () => {
-    const [teachers, setTeachers] = useState([]);
-    const [classes, setClasses] = useState([]);
-    const [subjects, setSubjects] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: teachers, loading: teachersLoading, error: teachersError, refetch: refetchTeachers } = useTeachers();
+    const { data: classes, loading: classesLoading, error: classesError } = useClasses();
+    const { data: subjects, loading: subjectsLoading, error: subjectsError } = useSubjects();
+
+    const teachersList = teachers || [];
+    const classesList = classes || [];
+    const subjectsList = subjects || [];
+
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -26,26 +32,13 @@ const Teachers = () => {
     });
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    const loading = teachersLoading || classesLoading || subjectsLoading;
+    const error = teachersError || classesError || subjectsError;
 
     const fetchData = async () => {
-        try {
-            const [tRes, cRes, sRes] = await Promise.all([
-                client.get('/teachers'),
-                client.get('/classes'),
-                client.get('/subjects')
-            ]);
-            setTeachers(tRes.data);
-            setClasses(cRes.data);
-            setSubjects(sRes.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+        await refetchTeachers();
     };
+
 
     const handleOpenAdd = () => {
         setIsEditMode(false);
@@ -98,9 +91,9 @@ const Teachers = () => {
         setIsSaving(true);
         try {
             if (isEditMode) {
-                await client.put(`/teachers/${editingId}`, { ...formData, assignments: validAssignments });
+                await teacherService.update(editingId, { ...formData, assignments: validAssignments });
             } else {
-                await client.post('/teachers', { ...formData, assignments: validAssignments });
+                await teacherService.create({ ...formData, assignments: validAssignments });
             }
             setIsModalOpen(false);
             fetchData();
@@ -112,16 +105,16 @@ const Teachers = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this teacher account? This action cannot be undone.')) return;
+        if (!window.confirm('Are you sure you want to delete this teacher account?')) return;
         try {
-            await client.delete(`/teachers/${id}`);
-            setTeachers(prev => prev.filter(t => t.id !== id));
+            await teacherService.delete(id);
+            fetchData();
         } catch (err) {
             alert('Delete failed: ' + (err.response?.data?.message || err.message));
         }
     };
 
-    const filteredTeachers = teachers.filter(t =>
+    const filteredTeachers = teachersList.filter(t =>
         t.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -290,7 +283,7 @@ const Teachers = () => {
                                         onChange={e => handleAssignmentChange(idx, 'class_id', e.target.value)}
                                     >
                                         <option value="">Select Class</option>
-                                        {classes.map(c => (
+                                        {classesList.map(c => (
                                             <option key={c.id} value={c.id}>{c.name} {c.section}</option>
                                         ))}
                                     </SelectField>
@@ -301,7 +294,7 @@ const Teachers = () => {
                                         onChange={e => handleAssignmentChange(idx, 'subject_id', e.target.value)}
                                     >
                                         <option value="">Select Subject</option>
-                                        {subjects.map(s => (
+                                        {subjectsList.map(s => (
                                             <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
                                     </SelectField>

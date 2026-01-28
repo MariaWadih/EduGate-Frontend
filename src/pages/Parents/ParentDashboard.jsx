@@ -5,7 +5,7 @@ import {
     Users, TrendingUp, AlertTriangle, CreditCard,
     Calendar, Clock, Bell, ChevronRight, MessageSquare, Book
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 
 const ParentDashboard = () => {

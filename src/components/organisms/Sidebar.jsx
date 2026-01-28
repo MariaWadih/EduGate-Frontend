@@ -5,7 +5,7 @@ import {
     Bell, LogOut, TrendingUp, Heart, Settings,
     GraduationCap, MessageSquare, CreditCard, ChevronRight
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks';
 
 const Sidebar = () => {
     const { user, logout } = useAuth();
