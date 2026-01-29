@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        await authService.csrf(); // Get cookie first
+        // await authService.csrf(); // Not needed for token auth
         const res = await authService.login(email, password);
         setUser(res.data.user);
         return res.data.user;
