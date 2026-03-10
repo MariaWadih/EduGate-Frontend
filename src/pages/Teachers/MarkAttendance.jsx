@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { teacherService, academicService } from '../../services';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, AlertCircle, Save } from 'lucide-react';
-import { Button, Card } from '../../components/atoms';
+import { Button, Card, Input, Avatar } from '../../components/atoms';
 import { FormField, SelectField, Table } from '../../components/molecules';
 
 const MarkAttendance = () => {
@@ -10,6 +10,7 @@ const MarkAttendance = () => {
     const [selectedClassId, setSelectedClassId] = useState('');
     const [students, setStudents] = useState([]);
     const [attendance, setAttendance] = useState({}); // { studentId: status }
+    const [remarks, setRemarks] = useState({}); // { studentId: remark }
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
 
@@ -17,26 +18,50 @@ const MarkAttendance = () => {
         teacherService.getMyClasses().then(res => setClasses(res.data));
     }, []);
 
+
     const handleClassChange = (e) => {
         const classId = e.target.value;
         setSelectedClassId(classId);
         if (classId) {
             academicService.getClass(classId).then(res => {
                 setStudents(res.data.students);
-                const initial = {};
-                res.data.students.forEach(s => initial[s.id] = 'present');
-                setAttendance(initial);
             });
         } else {
             setStudents([]);
+            setAttendance({});
+            setRemarks({});
         }
     };
+
+    useEffect(() => {
+        if (selectedClassId && date && students.length > 0) {
+            setLoading(true);
+            teacherService.checkAttendance(selectedClassId, date)
+                .then(res => {
+                    const records = res.data;
+                    const newAttendance = {};
+                    const newRemarks = {};
+
+                    students.forEach(s => {
+                        const rec = records.find(r => r.student_id === s.id);
+                        newAttendance[s.id] = rec ? rec.status : 'present';
+                        newRemarks[s.id] = rec ? (rec.remarks || '') : '';
+                    });
+
+                    setAttendance(newAttendance);
+                    setRemarks(newRemarks);
+                })
+                .catch(err => console.error(err))
+                .finally(() => setLoading(false));
+        }
+    }, [selectedClassId, date, students]);
 
     const submitAttendance = () => {
         setLoading(true);
         const records = Object.keys(attendance).map(id => ({
             student_id: id,
-            status: attendance[id]
+            status: attendance[id],
+            remarks: remarks[id] || ''
         }));
 
         teacherService.storeAttendance({
@@ -54,15 +79,14 @@ const MarkAttendance = () => {
     const statusColors = {
         present: { bg: 'var(--success)', text: 'white' },
         absent: { bg: 'var(--danger)', text: 'white' },
-        late: { bg: 'var(--warning)', text: 'white' },
-        excused: { bg: 'var(--secondary)', text: 'white' }
+        late: { bg: 'var(--warning)', text: 'white' }
     };
 
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <h1 style={{ marginBottom: '32px' }}>Mark Attendance</h1>
 
-            <Card style={{ marginBottom: '32px', display: 'flex', gap: '24px', padding: '32px' }}>
+            <Card className="flex-responsive" style={{ marginBottom: '32px', padding: '32px' }}>
                 <div style={{ flex: 1 }}>
                     <SelectField
                         label="SELECT CLASS"
@@ -91,45 +115,83 @@ const MarkAttendance = () => {
                         <h3 style={{ margin: 0 }}>Student Roster</h3>
                     </div>
                     <div style={{ padding: '32px' }}>
-                        <Table style={{ marginBottom: '32px' }}>
-                            <Table.Head>
-                                <Table.Row>
-                                    <Table.Header>Student Name</Table.Header>
-                                    <Table.Header align="right">Status</Table.Header>
-                                </Table.Row>
-                            </Table.Head>
-                            <Table.Body>
-                                {students.map(s => (
-                                    <Table.Row key={s.id}>
-                                        <Table.Cell style={{ fontWeight: 600 }}>{s.user.name}</Table.Cell>
-                                        <Table.Cell align="right">
-                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                                {['present', 'absent', 'late', 'excused'].map(status => {
+                        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0', tableLayout: 'fixed' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ textAlign: 'left', padding: '12px 16px', color: '#6B7280', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E5E7EB', width: '25%' }}>Student Name</th>
+                                    <th style={{ textAlign: 'left', padding: '12px 16px', color: '#6B7280', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E5E7EB', width: '35%' }}>Attendance Status</th>
+                                    <th style={{ textAlign: 'left', padding: '12px 16px', color: '#6B7280', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E5E7EB', width: '40%' }}>Notes / Excuse</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {students.map((s, index) => (
+                                    <tr key={s.id} style={{ background: index % 2 === 0 ? 'transparent' : '#F9FAFB' }}>
+                                        <td style={{ padding: '16px', borderBottom: '1px solid #F3F4F6' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <Avatar size="sm" style={{ background: 'var(--primary)', color: 'white', fontWeight: 600 }}>
+                                                    {s.user.name.charAt(0)}
+                                                </Avatar>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>{s.user.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#6B7280' }}>ID: {s.id}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '16px', borderBottom: '1px solid #F3F4F6' }}>
+                                            <div style={{
+                                                display: 'inline-flex',
+                                                gap: '4px',
+                                                background: '#F3F4F6',
+                                                padding: '4px',
+                                                borderRadius: '10px'
+                                            }}>
+                                                {['present', 'absent', 'late'].map(status => {
                                                     const isActive = attendance[s.id] === status;
                                                     return (
-                                                        <Button
+                                                        <button
                                                             key={status}
-                                                            size="small"
-                                                            variant={isActive ? 'primary' : 'outline'}
                                                             onClick={() => setAttendance({ ...attendance, [s.id]: status })}
                                                             style={{
+                                                                padding: '6px 16px',
+                                                                borderRadius: '8px',
+                                                                fontSize: '0.85rem',
+                                                                fontWeight: 600,
+                                                                border: 'none',
+                                                                cursor: 'pointer',
                                                                 textTransform: 'capitalize',
-                                                                minWidth: '80px',
+                                                                transition: 'all 0.2s',
                                                                 background: isActive ? statusColors[status].bg : 'transparent',
-                                                                borderColor: isActive ? statusColors[status].bg : 'var(--border-color)',
-                                                                color: isActive ? statusColors[status].text : 'var(--text-muted)'
+                                                                color: isActive ? 'white' : '#6B7280',
+                                                                boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                                                             }}
                                                         >
                                                             {status}
-                                                        </Button>
+                                                        </button>
                                                     );
                                                 })}
                                             </div>
-                                        </Table.Cell>
-                                    </Table.Row>
+                                        </td>
+                                        <td style={{ padding: '16px', borderBottom: '1px solid #F3F4F6' }}>
+                                            <Input
+                                                placeholder={attendance[s.id] === 'present' ? "No remarks required" : "Add student note..."}
+                                                value={remarks[s.id] || ''}
+                                                onChange={e => setRemarks({ ...remarks, [s.id]: e.target.value })}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '38px',
+                                                    fontSize: '0.85rem',
+                                                    border: '1px solid #E5E7EB',
+                                                    borderRadius: '8px',
+                                                    background: attendance[s.id] === 'present' ? '#F9FAFB' : 'white',
+                                                    opacity: attendance[s.id] === 'present' ? 0.5 : 1
+                                                }}
+                                                disabled={attendance[s.id] === 'present'}
+                                            />
+                                        </td>
+                                    </tr>
                                 ))}
-                            </Table.Body>
-                        </Table>
+                            </tbody>
+                        </table>
 
                         <Button
                             style={{ width: '100%', padding: '16px', height: 'auto', fontSize: '1rem', fontWeight: 700 }}
@@ -139,6 +201,7 @@ const MarkAttendance = () => {
                         >
                             {loading ? 'Submitting...' : 'Save Attendance Records'}
                         </Button>
+
                     </div>
                 </Card>
             )}

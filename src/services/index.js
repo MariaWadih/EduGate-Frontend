@@ -6,3 +6,5 @@ export * from './academicService';
 export * from './announcementService';
 export * from './analyticsService';
 export * from './feedbackService';
+export * from './materialService';
+export * from './promotionService';

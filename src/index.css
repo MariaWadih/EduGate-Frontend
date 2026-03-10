@@ -65,15 +65,23 @@ body {
 
 .sidebar {
   width: var(--sidebar-w);
-  background-color: white;
+  background-color: var(--bg-card);
   border-right: 1px solid var(--border-color);
   height: 100vh;
   position: fixed;
-  padding: 32px 20px;
+  padding: 24px 16px;
   display: flex;
   flex-direction: column;
   z-index: 50;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, and Opera */
 }
 
 .main-content {
@@ -81,6 +89,7 @@ body {
   flex: 1;
   padding: 40px 60px;
   max-width: 1600px;
+  zoom: 0.9;
 }
 
 /* Components */
@@ -140,38 +149,80 @@ body {
   border-color: var(--border-hover);
 }
 
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-main);
+  border: 1px solid transparent;
+}
+
+.btn-ghost:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-link {
+  background-color: transparent;
+  color: var(--primary);
+  border: none;
+  padding: 0;
+  height: auto;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+}
+
+.btn-lg {
+  padding: 16px 32px;
+  font-size: 1.0625rem;
+}
+
 /* Navigation */
 .nav-link {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   color: var(--text-muted);
   text-decoration: none;
   border-radius: var(--radius-md);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: 600;
-  font-size: 0.9375rem;
-  transition: all 0.2s ease;
-  gap: 12px;
+  font-size: 0.85rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 10px;
+  border: 1px solid transparent;
 }
 
 .nav-link:hover {
-  background-color: var(--primary-light);
+  background-color: var(--bg-main);
   color: var(--primary);
+  transform: translateX(4px);
 }
 
 .nav-link.active {
-  background-color: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #6366F1 100%);
   color: white;
-  box-shadow: 0 4px 12px 0 rgba(79, 70, 229, 0.2);
+  box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .nav-link svg {
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.nav-link.active svg {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 .nav-link:hover svg {
-  transform: translateX(2px);
+  opacity: 1;
+  color: var(--primary);
 }
 
 /* Typography */
@@ -315,4 +366,403 @@ tr:hover td {
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease forwards;
+}
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 0px;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    width: 280px;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 24px 20px;
+    width: 100%;
+  }
+
+  .mobile-header {
+    display: flex !important;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    margin-bottom: 24px;
+  }
+
+  .overview-banner {
+    padding: 32px 24px;
+    border-radius: 20px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  /* Stacked Grids */
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .status-badge {
+    padding: 4px 8px;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.875rem;
+  }
+}
+
+.mobile-header {
+  display: none;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 20px;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 40;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 45;
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar-overlay.mobile-open {
+    display: block;
+  }
+}
+
+.flex-responsive {
+  display: flex;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .flex-responsive {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+/* Grid Utilities */
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.grid-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+
+.grid-1-2 {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 32px;
+}
+
+.grid-1-1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+@media (max-width: 1200px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+
+  .grid-4,
+  .grid-3,
+  .grid-2-1,
+  .grid-1-2,
+  .grid-1-1 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .search-bar-responsive {
+    width: 100% !important;
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Professional PDF/Print Transformation */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: #111 !important;
+    font-size: 9pt !important;
+    padding: 0.5cm 1.3cm !important;
+  }
+
+  /* Structural UI Hiding */
+  .sidebar,
+  .mobile-header,
+  .sidebar-overlay,
+  button,
+  .search-bar,
+  nav,
+  .communications-section,
+  .help-circle-footer,
+  .no-print,
+  .nav-container,
+  .btn,
+  .search-input,
+  span[size],
+  .chevron-icon,
+  .no-download,
+  header {
+    display: none !important;
+  }
+
+  .main-content,
+  .printable-document {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    zoom: 0.8 !important;
+    margin-top: 0 !important;
+    max-height: 27cm !important;
+    overflow: hidden !important;
+  }
+
+  .print-only-date {
+    display: block !important;
+    margin-bottom: 24px !important;
+    padding-bottom: 12px !important;
+    border-bottom: 2px solid #4F46E5 !important;
+  }
+
+  .print-only-date span {
+    font-size: 9.5pt !important;
+    font-weight: 600 !important;
+    color: #333 !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Formal Card Transformation */
+  .card {
+    box-shadow: none !important;
+    border: none !important;
+    border-bottom: 2px solid #f0f0f0 !important;
+    border-radius: 0 !important;
+    padding: 12px 0 !important;
+    margin-bottom: 12px !important;
+    background: white !important;
+    color: black !important;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Force background colors even for white cards in print */
+  .card[style*="background: linear-gradient"] {
+    background: #f8f9fa !important;
+    color: #4F46E5 !important;
+    border: 1px solid #eee !important;
+  }
+
+  /* Statistics Header for Print - Convert grid to simple columns */
+  .grid-3 {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+    border: 1.5px solid #ddd !important;
+    margin-top: 15px !important;
+    margin-bottom: 32px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .grid-3>div {
+    flex: 1 !important;
+    border-right: 1.5px solid #ddd !important;
+    padding: 16px 14px !important;
+    text-align: center !important;
+    background: #fafafa !important;
+  }
+
+  .grid-3>div div:first-child {
+    font-size: 8pt !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: #666 !important;
+    font-weight: 700 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .grid-3>div div:last-child {
+    font-size: 16pt !important;
+    font-weight: 900 !important;
+    color: #1a1a1a !important;
+  }
+
+  .grid-3>div:last-child {
+    border-right: none !important;
+  }
+
+  .table-print-wrapper {
+    overflow: visible !important;
+    width: 100% !important;
+    margin-top: 25px !important;
+  }
+
+  .table-title-section {
+    margin-bottom: 18px !important;
+    padding: 18px 0 !important;
+    border-bottom: 2px solid #e5e5e5 !important;
+    background: transparent !important;
+  }
+
+  .table-title-section span {
+    font-size: 11pt !important;
+    font-weight: 800 !important;
+    color: #1a1a1a !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* Subject Table Formatting */
+  table {
+    width: 100% !important;
+    min-width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 25px !important;
+    table-layout: fixed !important;
+  }
+
+  th:first-child,
+  td:first-child {
+    width: 35% !important;
+  }
+
+  th:not(:first-child):not(:last-child),
+  td:not(:first-child):not(:last-child) {
+    width: 11% !important;
+  }
+
+  th:last-child,
+  td:last-child {
+    width: 10% !important;
+  }
+
+  th {
+    background: #f5f5f5 !important;
+    border-bottom: 2.5px solid #4F46E5 !important;
+    color: #333 !important;
+    padding: 12px 8px !important;
+    font-size: 8pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.3px !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  td {
+    border-bottom: 1px solid #e8e8e8 !important;
+    padding: 13px 8px !important;
+    font-size: 9.5pt !important;
+    line-height: 1.5 !important;
+    color: #2a2a2a !important;
+  }
+
+  td:first-child {
+    font-weight: 600 !important;
+    color: #1a1a1a !important;
+  }
+
+  td:last-child {
+    font-weight: 800 !important;
+    font-size: 10pt !important;
+  }
+
+  tr:last-child td {
+    border-bottom: 2px solid #ddd !important;
+  }
+
+  /* Specific UI removals inside components */
+  svg:not(.print-include) {
+    display: none !important;
+  }
+
+  /* Highlight specific scores */
+  span[style*="color: var(--success)"] {
+    color: #059669 !important;
+    font-weight: 900 !important;
+  }
 }

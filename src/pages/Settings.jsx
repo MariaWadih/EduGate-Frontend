@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks';
 import client from '../api/client';
-import { User, Mail, Lock, Shield, Phone, Save, CheckCircle2 } from 'lucide-react';
-import { Button, Card, Avatar, Input, Toggle } from '../components/atoms';
-import { FormField } from '../components/molecules';
+import {
+    User, Mail, Lock, Shield, Phone, Save,
+    CheckCircle2, Bell, Sun, Fingerprint, Activity,
+    ChevronRight, Settings as SettingsIcon, LogOut
+} from 'lucide-react';
+import { Button, Card, Avatar, Input, Toggle, Badge } from '../components/atoms';
 
 const Settings = () => {
     const { user, login } = useAuth();
@@ -78,76 +81,105 @@ const Settings = () => {
         }
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.6, staggerChildren: 0.1 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 10 },
+        visible: { opacity: 1, y: 0 }
+    };
+
     const sidebarItems = [
-        { id: 'personal', icon: <User size={18} />, label: 'Personal Info' },
-        { id: 'security', icon: <Shield size={18} />, label: 'Security' },
-        { id: 'preferences', icon: <Phone size={18} />, label: 'Preferences' }
+        { id: 'personal', icon: <User size={18} />, label: 'Personal Information' },
+        { id: 'security', icon: <Shield size={18} />, label: 'Security & Access' },
+        { id: 'preferences', icon: <SettingsIcon size={18} />, label: 'System Preferences' }
     ];
 
     const preferenceItems = [
-        { id: 'notifications', title: 'Email Notifications', desc: 'Receive immediate alerts for high-severity insights.' },
-        { id: 'darkMode', title: 'System Dark Mode', desc: 'Optimize the interface for low-light environments.' },
-        { id: 'biometric', title: 'Biometric Access', desc: 'Use platform-standard biometric authentication.' },
-        { id: 'analytics', title: 'Detailed Analytics', desc: 'Display expanded standard deviation in performance reports.' }
+        { id: 'notifications', title: 'Email Notifications', desc: 'Receive immediate alerts for homework and exams.', icon: <Bell size={20} /> },
+        { id: 'darkMode', title: 'System Dark Mode', desc: 'Optimize the interface for low-light environments.', icon: <Sun size={20} /> },
+        { id: 'biometric', title: 'Biometric Access', desc: 'Use platform-standard biometric authentication.', icon: <Fingerprint size={20} /> },
+        { id: 'analytics', title: 'Performance Analytics', desc: 'Enable detailed tracking of academic progress.', icon: <Activity size={20} /> }
     ];
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            style={{ maxWidth: '1100px', margin: '0 auto' }}
+        >
             <header style={{ marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '8px' }}>Global Settings</h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Configure your personal profile and system preferences</p>
+                <Badge bg="var(--primary-light)" color="var(--primary)" style={{ marginBottom: '12px', fontWeight: 800 }}>ACCOUNT CONFIGURATION</Badge>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '8px', letterSpacing: '-0.03em' }}>Settings Hub</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500 }}>Manage your digital identity and customize your EduGate experience.</p>
             </header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '40px', alignItems: 'start' }}>
-                <aside>
-                    <Card style={{ padding: '0', overflow: 'hidden' }}>
-                        <div style={{ padding: '32px', textAlign: 'center', background: 'var(--primary)', color: 'white' }}>
-                            <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div className="grid-2-1" style={{ gridTemplateColumns: '300px 1fr', gap: '40px', alignItems: 'start' }}>
+                <motion.aside variants={itemVariants}>
+                    <Card style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }}>
+                        <div style={{ padding: '40px 32px', textAlign: 'center', background: 'linear-gradient(135deg, var(--primary) 0%, #6366F1 100%)', color: 'white' }}>
+                            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
                                 <Avatar
                                     name={user?.name}
-                                    size={80}
+                                    size={96}
                                     style={{
-                                        marginBottom: '16px',
-                                        border: '3px solid rgba(255,255,255,0.2)',
+                                        border: '4px solid rgba(255,255,255,0.3)',
                                         background: 'white',
-                                        color: 'var(--primary)'
+                                        color: 'var(--primary)',
+                                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
                                     }}
                                 />
+                                <div style={{
+                                    position: 'absolute', bottom: '4px', right: '4px',
+                                    width: '24px', height: '24px', borderRadius: '50%',
+                                    background: 'var(--success)', border: '3px solid white'
+                                }} />
                             </div>
-                            <h3 style={{ margin: 0, color: 'white', fontSize: '1.125rem' }}>{user?.name}</h3>
-                            <div style={{ fontSize: '0.75rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 800, marginTop: '4px', letterSpacing: '0.1em' }}>{user?.role}</div>
+                            <h3 style={{ margin: 0, color: 'white', fontSize: '1.25rem', fontWeight: 800 }}>{user?.name}</h3>
+                            <div style={{ fontSize: '0.75rem', opacity: 0.9, textTransform: 'uppercase', fontWeight: 800, marginTop: '6px', letterSpacing: '0.1em' }}>{user?.role} ACCOUNT</div>
                         </div>
-                        <nav style={{ padding: '12px' }}>
+                        <nav style={{ padding: '16px' }}>
                             {sidebarItems.map((item) => (
-                                <Button
+                                <button
                                     key={item.id}
-                                    variant={activeTab === item.id ? 'primary' : 'outline'}
                                     onClick={() => setActiveTab(item.id)}
                                     style={{
                                         width: '100%',
                                         display: 'flex',
                                         alignItems: 'center',
+                                        justifyContent: 'space-between',
                                         gap: '12px',
-                                        padding: '12px 16px',
-                                        borderRadius: '10px',
+                                        padding: '14px 16px',
+                                        borderRadius: '12px',
                                         border: 'none',
                                         background: activeTab === item.id ? 'var(--primary-light)' : 'transparent',
                                         color: activeTab === item.id ? 'var(--primary)' : 'var(--text-muted)',
                                         fontWeight: 700,
-                                        textAlign: 'left',
-                                        marginBottom: '4px',
-                                        justifyContent: 'flex-start'
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        marginBottom: '6px',
+                                        textAlign: 'left'
                                     }}
                                 >
-                                    {item.icon}
-                                    {item.label}
-                                </Button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        {item.icon}
+                                        {item.label}
+                                    </div>
+                                    {activeTab === item.id && <ChevronRight size={16} />}
+                                </button>
                             ))}
                         </nav>
                     </Card>
-                </aside>
+                </motion.aside>
 
-                <main>
+                <motion.main variants={itemVariants}>
                     <AnimatePresence mode="wait">
                         {activeTab === 'personal' && (
                             <motion.div
@@ -155,53 +187,56 @@ const Settings = () => {
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
                             >
-                                <Card style={{ padding: '32px' }}>
-                                    <div style={{ marginBottom: '32px' }}>
-                                        <h3 style={{ margin: '0 0 8px 0' }}>Profile Information</h3>
-                                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Update your primary identification and contact details.</p>
+                                <Card style={{ padding: '40px', borderRadius: '24px' }}>
+                                    <div style={{ marginBottom: '40px' }}>
+                                        <h2 style={{ margin: '0 0 10px 0', fontSize: '1.5rem' }}>Personal Information</h2>
+                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 500 }}>Configure the identity details used across the platform.</p>
                                     </div>
-                                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '8px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>FULL LEGAL NAME</label>
-                                            <div style={{ position: 'relative' }}>
-                                                <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                                <Input
-                                                    fullWidth
-                                                    style={{ paddingLeft: '48px' }}
-                                                    value={formData.name}
-                                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                                    required
-                                                />
+                                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '10px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>FULL LEGAL NAME</label>
+                                                <div style={{ position: 'relative' }}>
+                                                    <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+                                                    <Input
+                                                        fullWidth
+                                                        style={{ paddingLeft: '48px', height: '52px', borderRadius: '12px' }}
+                                                        value={formData.name}
+                                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '10px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>SYSTEM EMAIL</label>
+                                                <div style={{ position: 'relative' }}>
+                                                    <Mail size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+                                                    <Input
+                                                        type="email"
+                                                        fullWidth
+                                                        style={{ paddingLeft: '48px', height: '52px', borderRadius: '12px' }}
+                                                        value={formData.email}
+                                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '8px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>SYSTEM EMAIL</label>
-                                            <div style={{ position: 'relative' }}>
-                                                <Mail size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                                <Input
-                                                    type="email"
-                                                    fullWidth
-                                                    style={{ paddingLeft: '48px' }}
-                                                    value={formData.email}
-                                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px', marginTop: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '20px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
                                             {success && (
                                                 <motion.div
                                                     initial={{ opacity: 0, scale: 0.9 }}
                                                     animate={{ opacity: 1, scale: 1 }}
-                                                    style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.875rem' }}
+                                                    style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.9rem' }}
                                                 >
-                                                    <CheckCircle2 size={18} /> Profile Synchronized
+                                                    <CheckCircle2 size={20} /> Profile Synchronized
                                                 </motion.div>
                                             )}
-                                            <Button type="submit" disabled={submitting}>
-                                                <Save size={18} />
-                                                {submitting ? 'Applying...' : 'Save Changes'}
+                                            <Button type="submit" disabled={submitting} style={{ padding: '12px 32px', borderRadius: '12px' }}>
+                                                <Save size={18} style={{ marginRight: '8px' }} />
+                                                {submitting ? 'Applying Changes...' : 'Update Explorer Profile'}
                                             </Button>
                                         </div>
                                     </form>
@@ -215,54 +250,57 @@ const Settings = () => {
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
                             >
-                                <Card style={{ padding: '32px' }}>
-                                    <div style={{ marginBottom: '32px' }}>
-                                        <h3 style={{ margin: '0 0 8px 0' }}>Security Credentials</h3>
-                                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Secure your account by updating your password periodically.</p>
+                                <Card style={{ padding: '40px', borderRadius: '24px' }}>
+                                    <div style={{ marginBottom: '40px' }}>
+                                        <h2 style={{ margin: '0 0 10px 0', fontSize: '1.5rem' }}>Security & Access</h2>
+                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 500 }}>Update your credentials to maintain account integrity.</p>
                                     </div>
-                                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '8px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>NEW PASSWORD</label>
-                                            <div style={{ position: 'relative' }}>
-                                                <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                                <Input
-                                                    type="password"
-                                                    fullWidth
-                                                    style={{ paddingLeft: '48px' }}
-                                                    value={formData.password}
-                                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                                    placeholder="Enter new password"
-                                                />
+                                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '10px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>NEW PASSWORD</label>
+                                                <div style={{ position: 'relative' }}>
+                                                    <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+                                                    <Input
+                                                        type="password"
+                                                        fullWidth
+                                                        style={{ paddingLeft: '48px', height: '52px', borderRadius: '12px' }}
+                                                        value={formData.password}
+                                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                                        placeholder="Create secure password"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '10px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>PASSWORD CONFIRMATION</label>
+                                                <div style={{ position: 'relative' }}>
+                                                    <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+                                                    <Input
+                                                        type="password"
+                                                        fullWidth
+                                                        style={{ paddingLeft: '48px', height: '52px', borderRadius: '12px' }}
+                                                        value={formData.password_confirmation}
+                                                        onChange={e => setFormData({ ...formData, password_confirmation: e.target.value })}
+                                                        placeholder="Confirm secure password"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 800, display: 'block', marginBottom: '8px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>CONFIRMATION</label>
-                                            <div style={{ position: 'relative' }}>
-                                                <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                                <Input
-                                                    type="password"
-                                                    fullWidth
-                                                    style={{ paddingLeft: '48px' }}
-                                                    value={formData.password_confirmation}
-                                                    onChange={e => setFormData({ ...formData, password_confirmation: e.target.value })}
-                                                    placeholder="Repeat new password"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px', marginTop: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '20px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
                                             {success && (
                                                 <motion.div
                                                     initial={{ opacity: 0, scale: 0.9 }}
                                                     animate={{ opacity: 1, scale: 1 }}
-                                                    style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.875rem' }}
+                                                    style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.9rem' }}
                                                 >
-                                                    <CheckCircle2 size={18} /> Credentials Updated
+                                                    <CheckCircle2 size={20} /> Credentials Restructured
                                                 </motion.div>
                                             )}
-                                            <Button type="submit" disabled={submitting}>
-                                                <Save size={18} />
-                                                {submitting ? 'Updating...' : 'Update Credentials'}
+                                            <Button type="submit" disabled={submitting} style={{ padding: '12px 32px', borderRadius: '12px' }}>
+                                                <Shield size={18} style={{ marginRight: '8px' }} />
+                                                {submitting ? 'Authenticating...' : 'Secure Account'}
                                             </Button>
                                         </div>
                                     </form>
@@ -276,45 +314,59 @@ const Settings = () => {
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
                             >
-                                <Card style={{ padding: '32px' }}>
-                                    <div style={{ marginBottom: '32px' }}>
-                                        <h3 style={{ margin: '0 0 8px 0' }}>System Preferences</h3>
-                                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Tailor your administrative experience.</p>
+                                <Card style={{ padding: '40px', borderRadius: '24px' }}>
+                                    <div style={{ marginBottom: '40px' }}>
+                                        <h2 style={{ margin: '0 0 10px 0', fontSize: '1.5rem' }}>Platform Preferences</h2>
+                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 500 }}>Tailor the EduGate interface to your workflow.</p>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                         {preferenceItems.map((pref) => (
-                                            <div
+                                            <motion.div
                                                 key={pref.id}
+                                                whileHover={{ scale: 1.01, borderColor: 'var(--primary)' }}
                                                 onClick={() => togglePreference(pref.id)}
                                                 style={{
                                                     display: 'flex',
                                                     justifyContent: 'space-between',
                                                     alignItems: 'center',
-                                                    padding: '16px',
+                                                    padding: '24px',
                                                     background: 'var(--bg-main)',
-                                                    borderRadius: '12px',
-                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '20px',
+                                                    border: `2px solid ${prefs[pref.id] ? 'var(--primary-light)' : 'var(--border-color)'}`,
                                                     cursor: 'pointer',
-                                                    transition: 'all 0.2s ease'
+                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                                 }}
                                             >
-                                                <div>
-                                                    <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-main)' }}>{pref.title}</div>
-                                                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{pref.desc}</div>
+                                                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                                    <div style={{
+                                                        padding: '14px',
+                                                        background: prefs[pref.id] ? 'var(--primary)' : 'white',
+                                                        color: prefs[pref.id] ? 'white' : 'var(--text-muted)',
+                                                        borderRadius: '16px',
+                                                        boxShadow: 'var(--shadow-sm)'
+                                                    }}>
+                                                        {pref.icon}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '4px' }}>{pref.title}</div>
+                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>{pref.desc}</div>
+                                                    </div>
                                                 </div>
                                                 <Toggle checked={prefs[pref.id]} onChange={() => togglePreference(pref.id)} />
-                                            </div>
+                                            </motion.div>
                                         ))}
                                     </div>
                                 </Card>
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </main>
+                </motion.main>
             </div>
         </motion.div>
     );
 };
 
 export default Settings;
+

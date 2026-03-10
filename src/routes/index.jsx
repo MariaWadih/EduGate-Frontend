@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { ProtectedRoute, DashboardSwitcher } from './config';
+import { ProtectedRoute, DashboardSwitcher, AssignmentsSwitcher, ExamsSwitcher } from './config';
 
 // Pages
 import Login from '../pages/Login';
@@ -14,11 +14,27 @@ import Teachers from '../pages/Admin/Teachers';
 import Parents from '../pages/Admin/Parents';
 import Students from '../pages/Admin/Students';
 import AcademicManagement from '../pages/Admin/AcademicManagement';
+import StudentPromotion from '../pages/Admin/StudentPromotion';
+import HistoricalRecords from '../pages/Admin/HistoricalRecords';
 
 // Teacher
 import TeacherClasses from '../pages/Teachers/TeacherClasses';
 import MarkAttendance from '../pages/Teachers/MarkAttendance';
 import ClassRoster from '../pages/Teachers/ClassRoster';
+import ClassHomework from '../pages/Teachers/ClassHomework';
+import ClassMaterials from '../pages/Teachers/ClassMaterials';
+import HomeworkSubmissions from '../pages/Teachers/HomeworkSubmissions';
+import ExamDetails from '../pages/Teachers/ExamDetails';
+import ExamSubmissions from '../pages/Teachers/ExamSubmissions';
+import TeacherGrades from '../pages/Teachers/TeacherGrades';
+
+// Student
+import StudentCourses from '../pages/Students/StudentCourses';
+import StudentAttendance from '../pages/Students/StudentAttendance';
+import StudentMaterials from '../pages/Students/StudentMaterials';
+import StudentCalendar from '../pages/Students/StudentCalendar';
+import StudentGrades from '../pages/Students/StudentGrades';
+import TakeExam from '../pages/Students/TakeExam';
 
 const AppRoutes = () => {
     return (
@@ -71,9 +87,14 @@ const AppRoutes = () => {
                     <AcademicManagement />
                 </ProtectedRoute>
             } />
-            <Route path="/financial" element={
+            <Route path="/promotions" element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                    <PlaceholderPage title="Financial Management" />
+                    <StudentPromotion />
+                </ProtectedRoute>
+            } />
+            <Route path="/history" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                    <HistoricalRecords />
                 </ProtectedRoute>
             } />
 
@@ -93,16 +114,78 @@ const AppRoutes = () => {
                     <ClassRoster />
                 </ProtectedRoute>
             } />
+            <Route path="/classes/:id/assignments" element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <ClassHomework />
+                </ProtectedRoute>
+            } />
+            <Route path="/classes/:id/materials" element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <ClassMaterials />
+                </ProtectedRoute>
+            } />
+            <Route path="/homework/:id/submissions" element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <HomeworkSubmissions />
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/exams/:id/view" element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <ExamDetails />
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/exams/:id/submissions" element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <ExamSubmissions />
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/grades" element={
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <TeacherGrades />
+                </ProtectedRoute>
+            } />
 
-            {/* Student/Parent/Teacher Shared Placeholders */}
+            {/* Student/Parent Shared Placeholders */}
             <Route path="/assignments" element={
-                <ProtectedRoute allowedRoles={['student', 'parent', 'teacher']}>
-                    <PlaceholderPage title="Assignments" />
+                <ProtectedRoute allowedRoles={['student', 'parent', 'teacher', 'admin']}>
+                    <AssignmentsSwitcher />
                 </ProtectedRoute>
             } />
             <Route path="/exams" element={
                 <ProtectedRoute allowedRoles={['student', 'parent', 'teacher']}>
-                    <PlaceholderPage title="Exams & Quizzes" />
+                    <ExamsSwitcher />
+                </ProtectedRoute>
+            } />
+
+            {/* Student Specific Routes */}
+            <Route path="/student/attendance" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <StudentAttendance />
+                </ProtectedRoute>
+            } />
+            <Route path="/student/courses" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <StudentCourses />
+                </ProtectedRoute>
+            } />
+            <Route path="/student/calendar" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <StudentCalendar />
+                </ProtectedRoute>
+            } />
+            <Route path="/student/grades" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <StudentGrades />
+                </ProtectedRoute>
+            } />
+            <Route path="/student/materials" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <StudentMaterials />
+                </ProtectedRoute>
+            } />
+            <Route path="/student/exams/:id/take" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <TakeExam />
                 </ProtectedRoute>
             } />
 

@@ -3,9 +3,9 @@ import { Search } from 'lucide-react';
 import Card from '../atoms/Card';
 import Input from '../atoms/Input';
 
-const SearchBar = ({ value, onChange, placeholder = "Search...", ...props }) => {
+const SearchBar = ({ value, onChange, placeholder = "Search...", className = "", ...props }) => {
     return (
-        <Card style={{ marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'center', ...props.style }}>
+        <Card className={className} style={{ marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'center', ...props.style }}>
             <div style={{ position: 'relative', flex: 1 }}>
                 <Search
                     style={{

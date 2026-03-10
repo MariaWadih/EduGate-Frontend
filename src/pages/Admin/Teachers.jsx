@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { teacherService } from '../../services';
 import { motion } from 'framer-motion';
 import {
-    Users, Plus, Mail,
-    Trash2, Edit2
+    Users, Plus, Mail, Trash2, Edit2, Calendar, UserMinus,
+    CheckCircle, BookOpen, GraduationCap, LogOut
 } from 'lucide-react';
 import { Button, Badge, Avatar } from '../../components/atoms';
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
@@ -23,12 +23,14 @@ const Teachers = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [selectedStatus, setSelectedStatus] = useState('active');
 
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
-        assignments: [{ class_id: '', subject_id: '' }]
+        assignments: [{ class_id: '', subject_id: '' }],
+        status: 'active'
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -47,7 +49,8 @@ const Teachers = () => {
             name: '',
             email: '',
             password: 'password',
-            assignments: [{ class_id: '', subject_id: '' }]
+            assignments: [{ class_id: '', subject_id: '' }],
+            status: 'active'
         });
         setIsModalOpen(true);
     };
@@ -61,7 +64,8 @@ const Teachers = () => {
             password: '',
             assignments: teacher.assignments.length > 0
                 ? teacher.assignments.map(a => ({ class_id: a.class_id, subject_id: a.subject_id }))
-                : [{ class_id: '', subject_id: '' }]
+                : [{ class_id: '', subject_id: '' }],
+            status: teacher.status
         });
         setIsModalOpen(true);
     };
@@ -98,7 +102,8 @@ const Teachers = () => {
             setIsModalOpen(false);
             fetchData();
         } catch (err) {
-            alert('Operation failed: ' + (err.response?.data?.message || err.message));
+            const errorMsg = err.response?.data?.message || err.message;
+            alert('❌ Operation Failed\n\n' + errorMsg);
         } finally {
             setIsSaving(false);
         }
@@ -114,10 +119,33 @@ const Teachers = () => {
         }
     };
 
-    const filteredTeachers = teachersList.filter(t =>
-        t.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleUpdateStatus = async (id, newStatus) => {
+        const teacher = teachersList.find(t => t.id === id);
+        const hasAssignments = teacher?.assignments?.length > 0;
+
+        let confirmMsg = `Are you sure you want to change teacher status to ${newStatus}?`;
+
+        if (newStatus === 'inactive' && hasAssignments) {
+            confirmMsg += '\n\n⚠️ WARNING: This will remove all current course assignments for this teacher.';
+        }
+
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            await teacherService.updateStatus(id, newStatus);
+            fetchData();
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.message;
+            alert('❌ Status Update Failed\n\n' + errorMsg);
+        }
+    };
+
+    const filteredTeachers = teachersList.filter(t => {
+        const matchesSearch = t.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = selectedStatus === 'All' || t.status === selectedStatus;
+        return matchesSearch && matchesStatus;
+    });
 
     if (loading) return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -142,18 +170,29 @@ const Teachers = () => {
                 </Button>
             </div>
 
-            <SearchBar
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search by name or email..."
-            />
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
+                <div style={{ flex: 1 }}>
+                    <SearchBar
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        placeholder="Search by name or email..."
+                    />
+                </div>
+                <SelectField value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} style={{ width: '160px' }}>
+                    <option value="All">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="former">Former</option>
+                </SelectField>
+            </div>
 
             <Table>
                 <Table.Head>
                     <Table.Row>
                         <Table.Header>Teacher</Table.Header>
-                        <Table.Header>Subjects</Table.Header>
-                        <Table.Header>Classes</Table.Header>
+                        <Table.Header>Joined Date</Table.Header>
+                        <Table.Header>Teaching History</Table.Header>
+                        <Table.Header>Status</Table.Header>
                         <Table.Header align="right">Actions</Table.Header>
                     </Table.Row>
                 </Table.Head>
@@ -161,59 +200,123 @@ const Teachers = () => {
                     {filteredTeachers.map((teacher) => (
                         <Table.Row key={teacher.id}>
                             <Table.Cell>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <Avatar name={teacher.user?.name} />
-                                    <div>
-                                        <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <Avatar name={teacher.user?.name} size={44} />
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem', lineHeight: 1.2 }}>
                                             {teacher.user?.name}
-                                        </div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                            <Mail size={12} /> {teacher.user?.email}
+                                        </span>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                            <Mail size={12} style={{ opacity: 0.7 }} />
+                                            <span>{teacher.user?.email}</span>
                                         </div>
                                     </div>
                                 </div>
                             </Table.Cell>
                             <Table.Cell>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                    <Calendar size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                    {teacher.joined_at ? new Date(teacher.joined_at).toLocaleDateString() : 'N/A'}
+                                </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: '400px' }}>
                                     {teacher.assignments?.length > 0 ? (
-                                        [...new Set(teacher.assignments.map(a => a.subject?.name))].filter(Boolean).map((subj, i) => (
-                                            <Badge key={i} bg="var(--primary-light)" color="var(--primary)">
-                                                {subj}
-                                            </Badge>
+                                        teacher.assignments.map((a, i) => (
+                                            <div key={i} style={{
+                                                background: '#f8fafc',
+                                                padding: '4px 10px',
+                                                borderRadius: '6px',
+                                                fontSize: '0.7rem',
+                                                border: '1px solid #e2e8f0',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                color: '#475569'
+                                            }}>
+                                                <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{a.subject?.name}</span>
+                                                <span style={{ width: '1px', height: '10px', background: '#cbd5e1' }} />
+                                                <span style={{ fontWeight: 500 }}>{a.school_class?.name}-{a.school_class?.section} ({a.school_class?.academic_year})</span>
+                                            </div>
                                         ))
                                     ) : (
-                                        <span style={{ color: 'var(--text-light)', fontSize: '0.875rem' }}>No subjects</span>
+                                        <span style={{ color: 'var(--text-light)', fontSize: '0.8125rem', fontStyle: 'italic' }}>No active assignments</span>
                                     )}
                                 </div>
                             </Table.Cell>
                             <Table.Cell>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {teacher.assignments?.length > 0 ? (
-                                        [...new Set(teacher.assignments.map(a => a.school_class ? `${a.school_class.name} ${a.school_class.section}` : null))].filter(Boolean).map((cls, i) => (
-                                            <Badge key={i} bg="#F3F4F6" color="var(--text-muted)">
-                                                {cls}
-                                            </Badge>
-                                        ))
-                                    ) : (
-                                        <span style={{ color: 'var(--text-light)', fontSize: '0.875rem' }}>No classes</span>
-                                    )}
-                                </div>
+                                <Badge
+                                    bg={teacher.status === 'active' ? '#ECFDF5' : '#FEF2F2'}
+                                    color={teacher.status === 'active' ? '#047857' : '#B91C1C'}
+                                >
+                                    {teacher.status.toUpperCase()}
+                                </Badge>
                             </Table.Cell>
                             <Table.Cell align="right">
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                    {teacher.status === 'active' ? (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                style={{
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    padding: '0',
+                                                    borderRadius: '8px',
+                                                    color: '#f59e0b',
+                                                    borderColor: '#fef3c7'
+                                                }}
+                                                onClick={() => handleUpdateStatus(teacher.id, 'inactive')}
+                                                title="Mark Inactive"
+                                            >
+                                                <UserMinus size={16} />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                style={{
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    padding: '0',
+                                                    borderRadius: '8px',
+                                                    color: '#EF4444',
+                                                    borderColor: '#FEE2E2'
+                                                }}
+                                                onClick={() => handleUpdateStatus(teacher.id, 'former')}
+                                                title="Mark as Former (Resigned/Terminated)"
+                                            >
+                                                <LogOut size={16} />
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Button
+                                            variant="outline"
+                                            style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                padding: '0',
+                                                borderRadius: '8px',
+                                                color: '#10b981',
+                                                borderColor: '#d1fae5'
+                                            }}
+                                            onClick={() => handleUpdateStatus(teacher.id, 'active')}
+                                            title="Reactivate"
+                                        >
+                                            <CheckCircle size={16} />
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="outline"
-                                        style={{ padding: '8px', border: 'none' }}
+                                        style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            padding: '0',
+                                            borderRadius: '8px',
+                                            color: '#64748b'
+                                        }}
                                         onClick={() => handleOpenEdit(teacher)}
+                                        title="Edit Details"
                                     >
-                                        <Edit2 size={18} />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        style={{ padding: '8px', border: 'none', color: 'var(--danger)' }}
-                                        onClick={() => handleDelete(teacher.id)}
-                                    >
-                                        <Trash2 size={18} />
+                                        <Edit2 size={16} />
                                     </Button>
                                 </div>
                             </Table.Cell>
@@ -311,6 +414,21 @@ const Teachers = () => {
                             </div>
                         ))}
                     </div>
+
+                    {isEditMode && (
+                        <div style={{ marginBottom: '24px' }}>
+                            <SelectField
+                                label="Employment Status"
+                                required
+                                value={formData.status}
+                                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="former">Former</option>
+                            </SelectField>
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>

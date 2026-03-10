@@ -20,6 +20,7 @@ const AcademicManagement = () => {
     const [viewMode, setViewMode] = useState('hierarchy'); // hierarchy or calendar
     const [expandedGrades, setExpandedGrades] = useState({});
     const [expandedSections, setExpandedSections] = useState({});
+    const [selectedYear, setSelectedYear] = useState('2023-2024');
 
     // Modal states
     const [showGradeModal, setShowGradeModal] = useState(false);
@@ -63,7 +64,7 @@ const AcademicManagement = () => {
 
     useEffect(() => {
         fetchHierarchy();
-    }, []);
+    }, [selectedYear]);
 
     useEffect(() => {
         if (viewMode === 'calendar') {
@@ -74,7 +75,7 @@ const AcademicManagement = () => {
     const fetchHierarchy = async () => {
         try {
             setLoading(true);
-            const response = await academicService.getHierarchy();
+            const response = await academicService.getHierarchy({ academic_year: selectedYear });
             // Critical safety check: Ensure data is an array
             const data = Array.isArray(response.data) ? response.data : [];
             if (!Array.isArray(response.data)) {
@@ -158,7 +159,8 @@ const AcademicManagement = () => {
         try {
             setLoading(true);
             await academicService.createGrade({
-                name: newGradeName
+                name: newGradeName,
+                academic_year: selectedYear
             });
             setNewGradeName('');
             setShowGradeModal(false);
@@ -177,7 +179,8 @@ const AcademicManagement = () => {
             setLoading(true);
             await academicService.createSection({
                 grade_name: activeGrade,
-                section: newSectionName
+                section: newSectionName,
+                academic_year: selectedYear
             });
             setNewSectionName('');
             setShowSectionModal(false);
@@ -343,8 +346,14 @@ const AcademicManagement = () => {
                         </Button>
                     </div>
 
-                    <Select style={{ height: '42px', width: 'auto' }}>
-                        <option>2024-2025</option>
+                    <Select
+                        style={{ height: '42px', width: 'auto' }}
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                    >
+                        <option value="2023-2024">2023-2024</option>
+                        <option value="2024-2025">2024-2025</option>
+                        <option value="2025-2026">2025-2026</option>
                     </Select>
 
                     <SearchBar
@@ -672,9 +681,8 @@ const AcademicManagement = () => {
                         onChange={(e) => setNewGradeName(e.target.value)}
                         required
                     />
-                    <SelectField label="ACADEMIC YEAR">
-                        <option>2024-2025</option>
-                        <option>2023-2024</option>
+                    <SelectField label="ACADEMIC YEAR" value={selectedYear} disabled>
+                        <option value={selectedYear}>{selectedYear}</option>
                     </SelectField>
                     <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                         <Button type="submit" style={{ flex: 1 }}>Create Grade</Button>

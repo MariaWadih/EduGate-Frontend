@@ -89,7 +89,7 @@ const Login = () => {
                     zIndex: 10
                 }}
             >
-                <Card style={{
+                <Card className="login-card" style={{
                     background: 'rgba(255, 255, 255, 0.95)',
                     backdropFilter: 'blur(20px)',
                     padding: '48px',

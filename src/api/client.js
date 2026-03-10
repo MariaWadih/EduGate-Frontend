@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const client = axios.create({
-    baseURL: 'http://localhost:9000/api',
+    baseURL: 'http://127.0.0.1:18000/api',
     // withCredentials: true, // Not needed for Bearer token
     headers: {
         'Content-Type': 'application/json',

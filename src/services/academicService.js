@@ -1,7 +1,7 @@
 import client from '../api/client';
 
 export const academicService = {
-    getHierarchy: () => client.get('/academic-hierarchy'),
+    getHierarchy: (params) => client.get('/academic-hierarchy', { params }),
 
     // Classes
     getClasses: () => client.get('/classes'),

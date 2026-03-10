@@ -128,7 +128,7 @@ const AdminDashboard = () => {
 
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <header className="flex-responsive" style={{ marginBottom: '40px', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px' }}>OVERVIEW</div>
                     <h1 style={{ margin: 0 }}>System Intelligence</h1>
@@ -148,7 +148,7 @@ const AdminDashboard = () => {
                         Platform attendance is holding steady at <span style={{ fontWeight: 800 }}>{metrics.attendance_rate}%</span>.
                         We've identified {metrics.chronic_absenteeism} critical attendance alerts this week across the faculty network.
                     </p>
-                    <div style={{ display: 'flex', gap: '16px' }}>
+                    <div className="flex-responsive" style={{ gap: '16px' }}>
                         <Button
                             onClick={() => navigate('/feedback')}
                             style={{ background: 'white', color: 'var(--primary)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
@@ -167,7 +167,7 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '40px' }}>
+            <div className="grid-4" style={{ marginBottom: '40px' }}>
                 {[
                     { label: 'Avg. Attendance', value: `${metrics.attendance_rate}%`, trend: '+2.1%', up: true, icon: <Activity size={20} />, color: '#4F46E5', bg: '#EEF2FF', path: '/attendance' },
                     { label: 'Collection Rate', value: `${metrics.collection_rate}%`, trend: '-0.4%', up: false, icon: <CreditCard size={20} />, color: '#10B981', bg: '#DCFCE7', path: '/financial' },
@@ -194,7 +194,7 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px', marginBottom: '40px' }}>
+            <div className="grid-2-1" style={{ marginBottom: '40px' }}>
                 {/* Attendance Trend Chart */}
                 <Card style={{ padding: '32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
@@ -255,7 +255,7 @@ const AdminDashboard = () => {
                 </Card>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '32px', marginBottom: '40px' }}>
+            <div className="grid-1-2" style={{ marginBottom: '40px' }}>
                 {/* Registration Trend */}
                 <Card style={{ padding: '32px' }}>
                     <h3 style={{ marginBottom: '8px' }}>User Growth</h3>
@@ -290,7 +290,7 @@ const AdminDashboard = () => {
                 </Card>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '32px', marginBottom: '40px' }}>
+            <div className="grid-3" style={{ marginBottom: '40px' }}>
                 {/* Top Performing Classes */}
                 <Card style={{ padding: '32px', cursor: 'pointer' }} onClick={() => navigate('/academy')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
@@ -365,7 +365,7 @@ const AdminDashboard = () => {
                 </Card>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '32px', marginBottom: '40px' }}>
+            <div className="grid-2-1" style={{ marginBottom: '40px' }}>
                 <Card style={{ padding: 0, cursor: 'pointer' }} onClick={() => navigate('/feedback')}>
                     <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ margin: 0 }}>Recent User Feedback</h3>

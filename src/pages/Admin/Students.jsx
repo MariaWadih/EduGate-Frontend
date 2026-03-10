@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { studentService } from '../../services';
 import { motion } from 'framer-motion';
 import {
-    Users, Plus, Mail,
-    Trash2, Edit2, GraduationCap, Star
+    Plus, Users, Mail, Trash2, Edit2, GraduationCap, Star,
+    Calendar, UserMinus, Award, BookOpen
 } from 'lucide-react';
 import { Button, Badge, Avatar, Card, ProgressBar } from '../../components/atoms';
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
@@ -22,12 +22,15 @@ const Students = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [selectedGrade, setSelectedGrade] = useState('All');
+    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedStatus, setSelectedStatus] = useState('active');
 
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
-        class_id: ''
+        class_id: '',
+        status: 'active'
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -42,7 +45,7 @@ const Students = () => {
     const handleOpenAdd = () => {
         setIsEditMode(false);
         setEditingId(null);
-        setFormData({ name: '', email: '', password: 'password', class_id: '' });
+        setFormData({ name: '', email: '', password: 'password', class_id: '', status: 'active' });
         setIsModalOpen(true);
     };
 
@@ -53,7 +56,8 @@ const Students = () => {
             name: student.user.name,
             email: student.user.email,
             password: '',
-            class_id: student.class_id
+            class_id: student.class_id,
+            status: student.status
         });
         setIsModalOpen(true);
     };
@@ -86,14 +90,30 @@ const Students = () => {
         }
     };
 
+    const handleUpdateStatus = async (id, newStatus) => {
+        if (!window.confirm(`Are you sure you want to change student status to ${newStatus}?`)) return;
+        try {
+            await studentService.updateStatus(id, newStatus);
+            fetchData();
+        } catch (err) {
+            alert('Update failed: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
     const filteredStudents = studentsList.filter(s => {
         const matchesSearch = s.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesGrade = selectedGrade === 'All' || s.school_class?.name === selectedGrade;
-        return matchesSearch && matchesGrade;
+        const matchesYear = selectedYear === 'All' || s.school_class?.academic_year === selectedYear;
+        const matchesStatus = selectedStatus === 'All' || s.status === selectedStatus;
+        return matchesSearch && matchesGrade && matchesYear && matchesStatus;
     });
 
-    const topStudents = [...studentsList]
+    const years = ['All', ...new Set(classesList.map(c => c.academic_year))];
+    const gradeLevels = ['All', ...new Set(classesList.map(c => c.name))];
+
+    const topStudents = studentsList
+        .filter(s => s.status === 'active')
         .sort((a, b) => (b.grades_avg_score || 0) - (a.grades_avg_score || 0))
         .slice(0, 5);
 
@@ -115,11 +135,33 @@ const Students = () => {
                 </Button>
             </header>
 
-            <SearchBar
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Find a student..."
-            />
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '300px' }}>
+                    <SearchBar
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        placeholder="Find a student..."
+                    />
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <SelectField value={selectedYear} onChange={e => setSelectedYear(e.target.value)} style={{ width: '160px' }}>
+                        <option value="All">All Years</option>
+                        {years.filter(y => y !== 'All').map(y => <option key={y} value={y}>{y}</option>)}
+                    </SelectField>
+                    <SelectField value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)} style={{ width: '160px' }}>
+                        <option value="All">All Grades</option>
+                        {gradeLevels.filter(g => g !== 'All').map(g => <option key={g} value={g}>{g}</option>)}
+                    </SelectField>
+                    <SelectField value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} style={{ width: '160px' }}>
+                        <option value="All">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="transferred">Transferred</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="unenrolled">Unenrolled</option>
+                        <option value="alumni">Alumni</option>
+                    </SelectField>
+                </div>
+            </div>
 
             {/* Academic Leaders Section */}
             <section style={{ marginBottom: '48px' }}>
@@ -185,9 +227,9 @@ const Students = () => {
                 <Table.Head>
                     <Table.Row>
                         <Table.Header>Student</Table.Header>
-                        <Table.Header>Grade Level</Table.Header>
-                        <Table.Header>Section</Table.Header>
-                        <Table.Header>Guardians</Table.Header>
+                        <Table.Header>Joined Date</Table.Header>
+                        <Table.Header>Class & Year</Table.Header>
+                        <Table.Header>Status</Table.Header>
                         <Table.Header>Academic Score</Table.Header>
                         <Table.Header align="right">Actions</Table.Header>
                     </Table.Row>
@@ -205,25 +247,50 @@ const Students = () => {
                                 </div>
                             </Table.Cell>
                             <Table.Cell>
-                                <Badge>{student.school_class?.name}</Badge>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{student.school_class?.section}</span>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                    {student.parents?.length > 0 ? student.parents.map((p, j) => (
-                                        <Badge key={j} bg="#F1F5F9" style={{ fontSize: '0.7rem' }}>
-                                            {p.user?.name}
-                                        </Badge>
-                                    )) : <span style={{ color: 'var(--text-light)', fontSize: '0.8rem' }}>Unlinked</span>}
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                    <Calendar size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                    {student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : 'N/A'}
                                 </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <div>
+                                    <div style={{ fontWeight: 700 }}>{student.school_class?.name} - {student.school_class?.section}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.school_class?.academic_year}</div>
+                                </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Badge
+                                    bg={student.status === 'active' ? '#ECFDF5' : (['alumni', 'active'].includes(student.status) ? '#EFF6FF' : '#FEF2F2')}
+                                    color={student.status === 'active' ? '#047857' : (student.status === 'alumni' ? '#1D4ED8' : '#B91C1C')}
+                                >
+                                    {student.status.toUpperCase()}
+                                </Badge>
                             </Table.Cell>
                             <Table.Cell>
                                 <ProgressBar value={student.grades_avg_score || 0} />
                             </Table.Cell>
                             <Table.Cell align="right">
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                    {student.status === 'active' && (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                style={{ padding: '8px', border: 'none', color: '#3B82F6' }}
+                                                onClick={() => handleUpdateStatus(student.id, 'transferred')}
+                                                title="Mark as Transferred"
+                                            >
+                                                <GraduationCap size={18} />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                style={{ padding: '8px', border: 'none', color: '#EF4444' }}
+                                                onClick={() => handleUpdateStatus(student.id, 'inactive')}
+                                                title="Mark as Inactive"
+                                            >
+                                                <UserMinus size={18} />
+                                            </Button>
+                                        </>
+                                    )}
                                     <Button
                                         variant="outline"
                                         style={{ padding: '8px', border: 'none' }}
@@ -283,7 +350,7 @@ const Students = () => {
                             ))}
                         </SelectField>
                     </div>
-                    <div style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '16px' }}>
                         <FormField
                             label={isEditMode ? 'New Password (optional)' : 'Initial Password'}
                             type="password"
@@ -292,6 +359,22 @@ const Students = () => {
                             onChange={e => setFormData({ ...formData, password: e.target.value })}
                         />
                     </div>
+                    {isEditMode && (
+                        <div style={{ marginBottom: '24px' }}>
+                            <SelectField
+                                label="Student Status"
+                                required
+                                value={formData.status}
+                                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                            >
+                                <option value="active">Active</option>
+                                <option value="transferred">Transferred</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="unenrolled">Unenrolled</option>
+                                <option value="alumni">Alumni</option>
+                            </SelectField>
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                         <Button type="submit" disabled={isSaving}>
