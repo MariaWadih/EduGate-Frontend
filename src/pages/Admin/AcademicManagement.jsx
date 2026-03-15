@@ -6,6 +6,7 @@ import {
     X, Check, LayoutGrid, List
 } from 'lucide-react';
 import { academicService } from '../../services';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import client from '../../api/client';
 import { Button, Badge, Avatar, Card, Input, Select } from '../../components/atoms';
 import { Modal, FormField, SelectField, Table, SearchBar } from '../../components/molecules';
@@ -13,14 +14,16 @@ import { Modal, FormField, SelectField, Table, SearchBar } from '../../component
 // Note: Removed local ActionButton, IconButton, and Modal components in favor of Atomic Design components
 
 const AcademicManagement = () => {
+    const { activeYear, academicYears } = useAcademicYear();
     const [academicData, setAcademicData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [viewMode, setViewMode] = useState('hierarchy'); // hierarchy or calendar
+    const [viewMode, setViewMode] = useState('hierarchy');
     const [expandedGrades, setExpandedGrades] = useState({});
     const [expandedSections, setExpandedSections] = useState({});
-    const [selectedYear, setSelectedYear] = useState('2023-2024');
+    // selectedYear now stores the full year object (id + name)
+    const [selectedYear, setSelectedYear] = useState(null);
 
     // Modal states
     const [showGradeModal, setShowGradeModal] = useState(false);
@@ -55,6 +58,13 @@ const AcademicManagement = () => {
 
     const [copyMessage, setCopyMessage] = useState(null);
 
+    // Sync selectedYear to the active year from context on first load
+    useEffect(() => {
+        if (activeYear && !selectedYear) {
+            setSelectedYear(activeYear);
+        }
+    }, [activeYear]);
+
     const handleCopy = (text) => {
         navigator.clipboard.writeText(text);
         setCopyMessage(`${text} copied to clipboard!`);
@@ -63,7 +73,7 @@ const AcademicManagement = () => {
 
 
     useEffect(() => {
-        fetchHierarchy();
+        if (selectedYear) fetchHierarchy();
     }, [selectedYear]);
 
     useEffect(() => {
@@ -73,10 +83,11 @@ const AcademicManagement = () => {
     }, [viewMode, selectedGrade, selectedSection]);
 
     const fetchHierarchy = async () => {
+        if (!selectedYear) return;
         try {
             setLoading(true);
-            const response = await academicService.getHierarchy({ academic_year: selectedYear });
-            // Critical safety check: Ensure data is an array
+            // Pass academic_year_id (FK) for precise scoping
+            const response = await academicService.getHierarchy({ academic_year_id: selectedYear.id });
             const data = Array.isArray(response.data) ? response.data : [];
             if (!Array.isArray(response.data)) {
                 console.error('Academic Data is not an array:', response.data);
@@ -155,12 +166,12 @@ const AcademicManagement = () => {
     };
 
     const handleAddGrade = async () => {
-        if (!newGradeName.trim()) return;
+        if (!newGradeName.trim() || !selectedYear) return;
         try {
             setLoading(true);
             await academicService.createGrade({
                 name: newGradeName,
-                academic_year: selectedYear
+                academic_year_id: selectedYear.id,
             });
             setNewGradeName('');
             setShowGradeModal(false);
@@ -174,13 +185,13 @@ const AcademicManagement = () => {
     };
 
     const handleAddSection = async () => {
-        if (!newSectionName.trim()) return;
+        if (!newSectionName.trim() || !selectedYear) return;
         try {
             setLoading(true);
             await academicService.createSection({
                 grade_name: activeGrade,
                 section: newSectionName,
-                academic_year: selectedYear
+                academic_year_id: selectedYear.id,
             });
             setNewSectionName('');
             setShowSectionModal(false);
@@ -348,12 +359,17 @@ const AcademicManagement = () => {
 
                     <Select
                         style={{ height: '42px', width: 'auto' }}
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(e.target.value)}
+                        value={selectedYear?.id || ''}
+                        onChange={(e) => {
+                            const yr = academicYears.find(y => String(y.id) === String(e.target.value));
+                            if (yr) setSelectedYear(yr);
+                        }}
                     >
-                        <option value="2023-2024">2023-2024</option>
-                        <option value="2024-2025">2024-2025</option>
-                        <option value="2025-2026">2025-2026</option>
+                        {academicYears.map(yr => (
+                            <option key={yr.id} value={yr.id}>
+                                {yr.name}{yr.is_active ? ' (Active)' : ''}
+                            </option>
+                        ))}
                     </Select>
 
                     <SearchBar
@@ -681,8 +697,8 @@ const AcademicManagement = () => {
                         onChange={(e) => setNewGradeName(e.target.value)}
                         required
                     />
-                    <SelectField label="ACADEMIC YEAR" value={selectedYear} disabled>
-                        <option value={selectedYear}>{selectedYear}</option>
+                    <SelectField label="ACADEMIC YEAR" value={selectedYear?.id || ''} disabled>
+                        <option value={selectedYear?.id}>{selectedYear?.name}</option>
                     </SelectField>
                     <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                         <Button type="submit" style={{ flex: 1 }}>Create Grade</Button>

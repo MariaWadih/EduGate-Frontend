@@ -7,15 +7,15 @@ import {
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
 import { promotionService, studentService } from '../../services';
-import { useClasses } from '../../hooks';
+import client from '../../api/client';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const StudentPromotion = () => {
-    const { data: classes, refetch: refetchClasses } = useClasses();
-    const classesList = classes || [];
+    const { activeYear, academicYears } = useAcademicYear();
 
     const [loading, setLoading] = useState(false);
-    const [fromYear, setFromYear] = useState('2023-2024');
-    const [toYear, setToYear] = useState('2024-2025');
+    const [fromYear, setFromYear] = useState('');
+    const [toYear, setToYear] = useState('');
     const [fromClassId, setFromClassId] = useState('');
     const [toClassId, setToClassId] = useState('');
     const [candidates, setCandidates] = useState([]);
@@ -23,8 +23,24 @@ const StudentPromotion = () => {
     const [failedStudents, setFailedStudents] = useState(new Set());
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [statistics, setStatistics] = useState(null);
+    // Year-specific class lists fetched from the dedicated endpoint
+    const [fromYearClasses, setFromYearClasses] = useState([]);
+    const [toYearClasses, setToYearClasses] = useState([]);
 
-    const availableYears = ['2023-2024', '2024-2025', '2025-2026'];
+    // Derive year list from DB
+    const availableYears = (academicYears || []).map(y => y.name).sort();
+
+    // Set defaults once active year loads
+    useEffect(() => {
+        if (activeYear && !fromYear) {
+            setFromYear(activeYear.name);
+            // Default toYear to next sequential year if it exists
+            const idx = availableYears.indexOf(activeYear.name);
+            if (idx !== -1 && idx < availableYears.length - 1) {
+                setToYear(availableYears[idx + 1]);
+            }
+        }
+    }, [activeYear, academicYears]);
 
     const fetchCandidates = async () => {
         if (!fromYear) return;
@@ -70,6 +86,20 @@ const StudentPromotion = () => {
             console.error('Failed to fetch statistics:', err);
         }
     };
+
+    // Fetch classes for a specific year string from the dedicated endpoint
+    const fetchClassesForYear = async (year, setter) => {
+        if (!year) { setter([]); return; }
+        try {
+            const res = await client.get('/promotions/classes-for-year', { params: { academic_year: year } });
+            setter(res.data || []);
+        } catch {
+            setter([]);
+        }
+    };
+
+    useEffect(() => { fetchClassesForYear(fromYear, setFromYearClasses); }, [fromYear]);
+    useEffect(() => { fetchClassesForYear(toYear, setToYearClasses); }, [toYear]);
 
     useEffect(() => {
         fetchCandidates();
@@ -168,7 +198,8 @@ const StudentPromotion = () => {
                 from_academic_year: fromYear,
                 to_academic_year: toYear
             });
-            await refetchClasses();
+            // Refresh the toYear class list after initialization
+            await fetchClassesForYear(toYear, setToYearClasses);
             alert('✅ Class structure initialized for ' + toYear);
             fetchCandidates();
         } catch (err) {
@@ -191,8 +222,7 @@ const StudentPromotion = () => {
         setSelectedStudents(resetSelection);
     };
 
-    const toYearClasses = classesList.filter(c => c.academic_year === toYear);
-    const fromYearClasses = classesList.filter(c => c.academic_year === fromYear);
+    // toYearClasses and fromYearClasses are now managed by fetchClassesForYear above
 
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>

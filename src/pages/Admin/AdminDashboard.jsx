@@ -100,7 +100,7 @@ const AdminDashboard = () => {
             ['Metric', 'Value'],
             ['Total Students', metrics.total_students],
             ['Total Teachers', metrics.total_teachers],
-            ['Attendance Rate', `${metrics.attendance_rate}%`],
+            ['Total Classes', metrics.total_classes],
             ['Collection Rate', `${metrics.collection_rate}%`],
             [''],
             ['TOP PERFORMING CLASSES'],
@@ -145,8 +145,8 @@ const AdminDashboard = () => {
                 <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
                     <h2 style={{ fontSize: '2.25rem', marginBottom: '16px', fontWeight: 800 }}>Global Performance Insight</h2>
                     <p style={{ fontSize: '1.1rem', opacity: 0.95, lineHeight: 1.6, marginBottom: '32px' }}>
-                        Platform attendance is holding steady at <span style={{ fontWeight: 800 }}>{metrics.attendance_rate}%</span>.
-                        We've identified {metrics.chronic_absenteeism} critical attendance alerts this week across the faculty network.
+                        Platform network is currently managing <span style={{ fontWeight: 800 }}>{metrics.total_teachers} active faculty members</span>.
+                        We've identified {metrics.chronic_absenteeism} critical insights this week across the institution.
                     </p>
                     <div className="flex-responsive" style={{ gap: '16px' }}>
                         <Button
@@ -169,7 +169,7 @@ const AdminDashboard = () => {
 
             <div className="grid-4" style={{ marginBottom: '40px' }}>
                 {[
-                    { label: 'Avg. Attendance', value: `${metrics.attendance_rate}%`, trend: '+2.1%', up: true, icon: <Activity size={20} />, color: '#4F46E5', bg: '#EEF2FF', path: '/attendance' },
+                    { label: 'Total Teachers', value: metrics.total_teachers, trend: '+4.2%', up: true, icon: <Users size={20} />, color: '#4F46E5', bg: '#EEF2FF', path: '/teachers' },
                     { label: 'Collection Rate', value: `${metrics.collection_rate}%`, trend: '-0.4%', up: false, icon: <CreditCard size={20} />, color: '#10B981', bg: '#DCFCE7', path: '/financial' },
                     { label: 'Total Students', value: metrics.total_students, trend: '+12', up: true, icon: <GraduationCap size={20} />, color: '#F59E0B', bg: '#FEF3C7', path: '/students' },
                     { label: 'Active Alerts', value: metrics.chronic_absenteeism, trend: 'Critical', up: false, icon: <AlertTriangle size={20} />, color: '#EF4444', bg: '#FEE2E2', path: '/feedback' }
@@ -195,38 +195,39 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid-2-1" style={{ marginBottom: '40px' }}>
-                {/* Attendance Trend Chart */}
+                {/* Performance Trend Chart */}
                 <Card style={{ padding: '32px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                         <div>
-                            <h3 style={{ margin: 0 }}>Attendance Trends</h3>
-                            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Daily system-wide attendance percentage</p>
+                            <h3 style={{ margin: 0 }}>Performance Trends</h3>
+                            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Average grades across all subjects</p>
                         </div>
                         <SelectField
-                            value="Last 7 Days"
+                            value="All Terms"
                             onChange={() => { }}
                             style={{ width: 'auto', padding: '8px 12px' }}
                         >
-                            <option>Last 7 Days</option>
-                            <option>Last 30 Days</option>
+                            <option>All Terms</option>
+                            <option>Mid Term</option>
+                            <option>Final Term</option>
                         </SelectField>
                     </div>
                     <div style={{ height: '300px', width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={charts.attendance_trend}>
+                            <LineChart data={charts.performance_trend}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} domain={[0, 100]} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
-                                    formatter={(value) => [`${value}%`, 'Attendance Rate']}
+                                    formatter={(value) => [`${value}%`, 'Avg. Score']}
                                 />
                                 <Line
                                     type="monotone"
-                                    dataKey="rate"
-                                    stroke="var(--primary)"
+                                    dataKey="avg_score"
+                                    stroke="var(--secondary)"
                                     strokeWidth={4}
-                                    dot={{ r: 6, fill: 'var(--primary)', strokeWidth: 3, stroke: '#fff' }}
+                                    dot={{ r: 6, fill: 'var(--secondary)', strokeWidth: 3, stroke: '#fff' }}
                                     activeDot={{ r: 8, strokeWidth: 0 }}
                                 />
                             </LineChart>
@@ -234,18 +235,18 @@ const AdminDashboard = () => {
                     </div>
                 </Card>
 
-                {/* Attendance by Grade Bar Chart */}
+                {/* Enrollment by Class Bar Chart */}
                 <Card style={{ padding: '32px' }}>
-                    <h3 style={{ marginBottom: '8px' }}>Grade Breakdown</h3>
-                    <p style={{ margin: '0 0 24px 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Attendance rate by academic level</p>
+                    <h3 style={{ marginBottom: '8px' }}>Class Distribution</h3>
+                    <p style={{ margin: '0 0 24px 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total students per class section</p>
                     <div style={{ height: '300px', width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={charts.attendance_by_grade} layout="vertical" margin={{ left: -20 }}>
+                            <BarChart data={charts.students_by_class} layout="vertical" margin={{ left: -20 }}>
                                 <XAxis type="number" hide />
-                                <YAxis dataKey="grade" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600 }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} formatter={(value) => [`${value}%`, 'Rate']} />
-                                <Bar dataKey="rate" radius={[0, 4, 4, 0]} barSize={20}>
-                                    {charts.attendance_by_grade.map((entry, index) => (
+                                <YAxis dataKey="class_name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600 }} />
+                                <Tooltip cursor={{ fill: 'transparent' }} formatter={(value) => [`${value} Students`, 'Count']} />
+                                <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
+                                    {charts.students_by_class.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Bar>

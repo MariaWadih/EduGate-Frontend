@@ -6,10 +6,12 @@ import {
     Filter, AlertCircle, CheckCircle2, XCircle, RefreshCw
 } from 'lucide-react';
 import { analyticsService } from '../../services';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { Table, SearchBar, Modal } from '../../components/molecules';
 
 const HistoricalRecords = () => {
+    const { academicYears } = useAcademicYear();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('students');
@@ -49,7 +51,11 @@ const HistoricalRecords = () => {
     const students = data?.students || { active: [], unenrolled: [], alumni: [] };
     const teachers = data?.teachers || { active: [], inactive: [] };
     const promotions = data?.promotions || {};
-    const years = data?.years || [];
+    // Use context years (real DB list) merged with anything the backend sends
+    const years = [...new Set([
+        ...(academicYears || []).map(y => y.name),
+        ...(data?.years || [])
+    ])].sort();
 
     const stats = [
         { label: 'Total Alumni', value: data?.overview?.total_alumni || 0, icon: <GraduationCap size={20} />, color: '#3B82F6', bg: '#EFF6FF' },
@@ -201,23 +207,77 @@ const HistoricalRecords = () => {
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{log.from_class?.name}</span>
-                                            <ArrowUpRight size={14} color="var(--text-muted)" />
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>{log.to_class?.name}</span>
+                                            {/* From class */}
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                                                    {log.from_class
+                                                        ? `${log.from_class.name} / ${log.from_class.section}`
+                                                        : '—'}
+                                                </div>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                    {log.from_academic_year}
+                                                </div>
+                                            </div>
+
+                                            <ArrowUpRight size={16} color="var(--text-muted)" />
+
+                                            {/* To class */}
+                                            {log.status === 'graduated' || !log.to_class ? (
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#6366F1' }}>🎓 Graduated</div>
+                                                </div>
+                                            ) : (
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 700,
+                                                        color: (log.from_class?.name === log.to_class?.name && log.from_class?.section === log.to_class?.section)
+                                                            ? '#EF4444'
+                                                            : 'var(--primary)'
+                                                    }}>
+                                                        {`${log.to_class.name} / ${log.to_class.section}`}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                        {log.to_academic_year}
+                                                        {(log.from_class?.name === log.to_class?.name && log.from_class?.section === log.to_class?.section) && (
+                                                            <span style={{ color: '#EF4444', marginLeft: '4px' }}>⚠ same grade</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{log.from_academic_year}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to {log.to_academic_year}</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                            {log.status === 'graduated' ? (
+                                                <span style={{ color: '#4F46E5' }}>🎓 Class of {log.from_academic_year}</span>
+                                            ) : (
+                                                log.from_academic_year
+                                            )}
+                                        </div>
+                                        {log.status !== 'graduated' && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                to {log.to_academic_year}
+                                            </div>
+                                        )}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <Badge
-                                            bg={log.status === 'promoted' ? '#ECFDF5' : '#FEF2F2'}
-                                            color={log.status === 'promoted' ? '#059669' : '#DC2626'}
-                                            size="sm"
-                                        >
-                                            {log.status.toUpperCase()}
-                                        </Badge>
+                                        {/* Detect data inconsistency: same grade + section but status = promoted */}
+                                        {(log.status === 'promoted' &&
+                                          log.from_class?.name === log.to_class?.name &&
+                                          log.from_class?.section === log.to_class?.section) ? (
+                                            <Badge bg="#FEF2F2" color="#DC2626" size="sm">
+                                                ⚠ DATA ERROR
+                                            </Badge>
+                                        ) : (
+                                            <Badge
+                                                bg={log.status === 'promoted' ? '#ECFDF5' : log.status === 'graduated' ? '#EFF6FF' : '#FEF2F2'}
+                                                color={log.status === 'promoted' ? '#059669' : log.status === 'graduated' ? '#4F46E5' : '#DC2626'}
+                                                size="sm"
+                                            >
+                                                {log.status?.toUpperCase()}
+                                            </Badge>
+                                        )}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>

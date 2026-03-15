@@ -58,11 +58,30 @@ const StudentGrades = () => {
         return Object.values(grouped);
     }, [grades, courses]);
 
+    // Strictly calculated based on visible column assessments only
     const calculateGPA = (courseGrades) => {
-        const scores = Object.values(courseGrades.assessments).map(a => (a.score / a.maxScore) * 100);
-        if (scores.length === 0) return 0;
-        return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+        const relevantAssessments = Object.entries(courseGrades.assessments)
+            .filter(([term]) => termOrder.includes(term))
+            .map(([_, a]) => (a.score / a.maxScore) * 100);
+        
+        if (relevantAssessments.length === 0) return "0.0";
+        
+        return (relevantAssessments.reduce((a, b) => a + b, 0) / relevantAssessments.length).toFixed(1);
     };
+
+    const overallAverage = useMemo(() => {
+        if (gradesByCourse.length === 0) return 0;
+        const total = gradesByCourse.reduce((acc, course) => acc + parseFloat(calculateGPA(course)), 0);
+        return (total / gradesByCourse.length).toFixed(1);
+    }, [gradesByCourse]);
+
+    const academicStanding = useMemo(() => {
+        const avg = parseFloat(overallAverage);
+        if (avg >= 90) return { label: 'Honor Roll', rank: 'Top 5%', color: 'var(--success)' };
+        if (avg >= 80) return { label: 'High Achiever', rank: 'Top 15%', color: 'var(--primary)' };
+        if (avg >= 70) return { label: 'Satisfactory', rank: 'Top 40%', color: 'var(--warning)' };
+        return { label: 'Needs Improvement', rank: 'N/A', color: 'var(--error)' };
+    }, [overallAverage]);
 
     const handleDownload = () => {
         window.print();
@@ -125,20 +144,20 @@ const StudentGrades = () => {
                 <Card style={{ padding: '24px', borderRadius: '24px', background: 'linear-gradient(135deg, var(--primary) 0%, #6366F1 100%)', color: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <Award size={24} className="print-include" />
-                        <Badge bg="rgba(255,255,255,0.2)" color="white" className="no-print">Top 5%</Badge>
+                        <Badge bg="rgba(255,255,255,0.2)" color="white" className="no-print">{academicStanding.rank}</Badge>
                     </div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Academic Standing</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>Honor Roll</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>{academicStanding.label}</div>
                 </Card>
                 <Card style={{ padding: '24px', borderRadius: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <TrendingUp size={24} color="var(--primary)" className="print-include" />
-                        <div style={{ color: 'var(--success)', fontWeight: 800, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} className="no-print">
-                            <ArrowUpRight size={14} /> +0.4
+                        <div style={{ color: parseFloat(overallAverage) >= 75 ? 'var(--success)' : 'var(--warning)', fontWeight: 800, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} className="no-print">
+                            <ArrowUpRight size={14} /> {(parseFloat(overallAverage) / 20).toFixed(1)} GPA
                         </div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Weighted Average</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>94.2%</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Global Average</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>{overallAverage}%</div>
                 </Card>
                 <Card style={{ padding: '24px', borderRadius: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
