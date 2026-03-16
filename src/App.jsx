@@ -4,17 +4,17 @@ import { AuthProvider } from './context/AuthContext';
 import { AcademicYearProvider } from './context/AcademicYearContext';
 import AppRoutes from './routes';
 import ErrorBoundary from './components/ErrorBoundary';
+import AIAssistantWidget from './components/molecules/AIAssistant/AIAssistantWidget';
 
 function App() {
   return (
     <AuthProvider>
-      <AcademicYearProvider>
-        <Router>
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-        </Router>
-      </AcademicYearProvider>
+      <Router>
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
+        <AIAssistantWidget />
+      </Router>
     </AuthProvider>
   );
 }
