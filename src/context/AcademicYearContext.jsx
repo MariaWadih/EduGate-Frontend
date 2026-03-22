@@ -8,12 +8,15 @@ export const AcademicYearProvider = ({ children }) => {
     const { user } = useContext(AuthContext);
     const [academicYears, setAcademicYears] = useState([]);
     const [activeYear, setActiveYearState] = useState(null);
+    const [selectedYear, setSelectedYear] = useState(null);
     const [loading, setLoading] = useState(true);
     
     const fetchActive = async () => {
         try {
             const res = await academicYearService.getActive();
             setActiveYearState(res.data);
+            // Default select the active year if nothing is selected
+            setSelectedYear(prev => prev || res.data);
         } catch {
             // Silently fail – not blocking
         }
@@ -57,6 +60,8 @@ export const AcademicYearProvider = ({ children }) => {
         <AcademicYearContext.Provider value={{
             activeYear,
             academicYears,
+            selectedYear,
+            setSelectedYear,
             loading,
             activateYear,
             createYear,

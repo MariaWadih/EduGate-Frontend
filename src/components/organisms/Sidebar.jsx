@@ -7,9 +7,11 @@ import {
     CalendarDays, Trophy, History
 } from 'lucide-react';
 import { useAuth } from '../../hooks';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const Sidebar = ({ className = '' }) => {
     const { user, logout } = useAuth();
+    const { academicYears, selectedYear, setSelectedYear } = useAcademicYear();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -20,7 +22,7 @@ const Sidebar = ({ className = '' }) => {
 
     return (
         <div className={`sidebar ${className}`}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '0 8px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '0 8px', marginBottom: '24px' }}>
                 <div style={{
                     background: 'linear-gradient(135deg, var(--primary) 0%, #6366F1 100%)',
                     color: 'white',
@@ -40,6 +42,8 @@ const Sidebar = ({ className = '' }) => {
                     <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '-1px' }}>Management Suite</div>
                 </div>
             </div>
+
+
 
             <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ fontWeight: 800, padding: '0 14px 10px 14px', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.12em', color: 'var(--text-muted)', opacity: 0.6 }}>Main Menu</div>
@@ -71,11 +75,11 @@ const Sidebar = ({ className = '' }) => {
                             <TrendingUp size={20} />
                             Student Promotion
                         </NavLink>
-                        <NavLink to="/history" className="nav-link">
-                            <History size={20} />
-                            History & Archives
-                        </NavLink>
 
+                        <NavLink to="/academic-records" className="nav-link">
+                            <CalendarDays size={20} />
+                            Yearly Records
+                        </NavLink>
                     </>
                 )}
 

@@ -11,7 +11,7 @@ import client from '../../api/client';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const StudentPromotion = () => {
-    const { activeYear, academicYears } = useAcademicYear();
+    const { activeYear, academicYears, selectedYear } = useAcademicYear();
 
     const [loading, setLoading] = useState(false);
     const [fromYear, setFromYear] = useState('');
@@ -34,13 +34,15 @@ const StudentPromotion = () => {
     useEffect(() => {
         if (activeYear && !fromYear) {
             setFromYear(activeYear.name);
-            // Default toYear to next sequential year if it exists
-            const idx = availableYears.indexOf(activeYear.name);
-            if (idx !== -1 && idx < availableYears.length - 1) {
-                setToYear(availableYears[idx + 1]);
+            
+            // Generate toYear name automatically (e.g. 2023-2024 -> 2024-2025)
+            const [start, end] = activeYear.name.split('-').map(Number);
+            if (start && end) {
+                const nextYearName = `${start + 1}-${end + 1}`;
+                setToYear(nextYearName);
             }
         }
-    }, [activeYear, academicYears]);
+    }, [activeYear]);
 
     const fetchCandidates = async () => {
         if (!fromYear) return;
@@ -97,6 +99,13 @@ const StudentPromotion = () => {
             setter([]);
         }
     };
+
+    // Get unique grades for the source and target years
+    const uniqueFromGrades = Array.from(new Map(fromYearClasses.map(c => [c.name, c])).values())
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+    const uniqueToGrades = Array.from(new Map(toYearClasses.map(c => [c.name, c])).values())
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
     useEffect(() => { fetchClassesForYear(fromYear, setFromYearClasses); }, [fromYear]);
     useEffect(() => { fetchClassesForYear(toYear, setToYearClasses); }, [toYear]);
@@ -356,11 +365,11 @@ const StudentPromotion = () => {
                     <div style={{ minWidth: '220px', flex: 1 }}>
                         <SelectField label="Bulk Destination" value={toClassId} onChange={e => setToClassId(e.target.value)}>
                             <option value="">{toYearClasses.length > 0 ? 'Select Target Class...' : 'No classes found in ' + toYear}</option>
-                            {toYearClasses.map(c => (
-                                <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                            {uniqueToGrades.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </SelectField>
-                        {toYearClasses.length === 0 && (
+                        {uniqueToGrades.length < uniqueFromGrades.length && (
                             <div
                                 onClick={handleInitializeClasses}
                                 style={{
@@ -375,7 +384,7 @@ const StudentPromotion = () => {
                                 }}
                             >
                                 <RefreshCw size={12} className={loading ? 'spinning' : ''} />
-                                Initialize structure from {fromYear}
+                                Sync class structure from {fromYear}
                             </div>
                         )}
                     </div>
@@ -434,6 +443,45 @@ const StudentPromotion = () => {
                     </div>
                 </div>
             </Card>
+
+            {/* Class Sync Alert */}
+            {uniqueToGrades.length < uniqueFromGrades.length && (
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }} 
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{ 
+                        background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(79, 70, 229, 0.1))',
+                        border: '1px solid rgba(79, 70, 229, 0.3)',
+                        padding: '24px 40px',
+                        borderRadius: '24px',
+                        marginBottom: '40px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        boxShadow: '0 20px 50px -15px rgba(79, 70, 229, 0.15)'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div style={{ background: 'var(--primary)', color: 'white', padding: '12px', borderRadius: '15px' }}>
+                            <TrendingUp size={24} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1.2rem', letterSpacing: '-0.01em' }}>Missing Class Structure?</div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 500 }}>
+                                The target year ({toYear}) is missing grades (Grade 10, Grade 11, etc). Promotion destinations must be pre-defined.
+                            </div>
+                        </div>
+                    </div>
+                    <Button 
+                        onClick={handleInitializeClasses} 
+                        disabled={loading}
+                        style={{ padding: '14px 32px', fontWeight: 700, borderRadius: '15px', background: 'var(--primary)', boxShadow: '0 10px 20px -5px var(--primary-glow)' }}
+                    >
+                        <RefreshCw size={18} className={loading ? 'spinning' : ''} />
+                        Sync {fromYear} Structure to {toYear}
+                    </Button>
+                </motion.div>
+            )}
 
             {/* Candidates Selection Table */}
             {candidates.length > 0 ? (
@@ -537,9 +585,9 @@ const StudentPromotion = () => {
                                                         outline: 'none'
                                                     }}
                                                 >
-                                                    <option value="">Select Destination...</option>
-                                                    {toYearClasses.map(c => (
-                                                        <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                                                    <option value="">Select Grade...</option>
+                                                    {uniqueToGrades.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
                                                     ))}
                                                 </select>
                                             )}

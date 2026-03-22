@@ -9,9 +9,13 @@ import { Button, Badge, Avatar } from '../../components/atoms';
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
 
 import { useTeachers, useClasses, useSubjects } from '../../hooks';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const Teachers = () => {
-    const { data: teachers, loading: teachersLoading, error: teachersError, refetch: refetchTeachers } = useTeachers();
+    const { activeYear } = useAcademicYear();
+    const { data: teachers, loading: teachersLoading, error: teachersError, refetch: refetchTeachers } = useTeachers(
+        activeYear?.id ? { academic_year_id: activeYear.id } : {}
+    );
     const { data: classes, loading: classesLoading, error: classesError } = useClasses();
     const { data: subjects, loading: subjectsLoading, error: subjectsError } = useSubjects();
 
@@ -163,7 +167,9 @@ const Teachers = () => {
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 700 }}>Teacher Management</h1>
+                <div>
+                    <h1 style={{ margin: '0', fontSize: '1.75rem', fontWeight: 700 }}>Teacher Management</h1>
+                </div>
                 <Button onClick={handleOpenAdd}>
                     <Plus size={18} />
                     Add Teacher
