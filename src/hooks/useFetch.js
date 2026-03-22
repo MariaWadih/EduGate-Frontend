@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import client from '../api/client';
 
 export const useFetch = (serviceCall, options = {}) => {
-    const [data, setData] = useState(options.initialData ?? null);
+    // Check if options is actually a dependency array (as passed by some hooks)
+    const dependencies = Array.isArray(options) ? options : [serviceCall];
+    const initialOptions = Array.isArray(options) ? {} : options;
+
+    const [data, setData] = useState(initialOptions.initialData ?? null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -24,7 +28,7 @@ export const useFetch = (serviceCall, options = {}) => {
         } finally {
             setLoading(false);
         }
-    }, [serviceCall]);
+    }, dependencies); // Pass dependencies here instead of [serviceCall]
 
     useEffect(() => {
         fetchData();

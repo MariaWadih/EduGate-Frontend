@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const Parents = () => {
+    const { activeYear } = useAcademicYear();
     const [parents, setParents] = useState([]);
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -25,8 +27,6 @@ const Parents = () => {
         student_ids: []
     });
     const [isSaving, setIsSaving] = useState(false);
-
-    const [selectedYear, setSelectedYear] = useState('All');
     const [selectedStatus, setSelectedStatus] = useState('All');
 
     const { data: classes } = useClasses();
@@ -34,7 +34,7 @@ const Parents = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [activeYear]);
 
     const fetchData = async () => {
         try {
@@ -112,13 +112,13 @@ const Parents = () => {
         }
     };
 
-    const years = ['All', ...new Set(classesList.map(c => c.academic_year))];
+
 
     const filteredParents = parents.filter(p => {
         const matchesSearch = p.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const hasStudentsInYear = selectedYear === 'All' || (p.students && p.students.some(s => s.school_class?.academic_year === selectedYear));
+        const hasStudentsInYear = !activeYear || (p.students && p.students.some(s => s.school_class?.academic_year === activeYear.name));
         const hasActiveStudents = p.students && p.students.some(s => s.status === 'active');
 
         const matchesStatus = selectedStatus === 'All' ||
@@ -145,7 +145,7 @@ const Parents = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Parent Management</h1>
+                    <h1 style={{ margin: '0', fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Parent Management</h1>
                     <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage family accounts and student-guardian relationships</p>
                 </div>
                 <Button
@@ -168,13 +168,7 @@ const Parents = () => {
                         />
                     </div>
 
-                    <SelectField
-                        value={selectedYear}
-                        onChange={e => setSelectedYear(e.target.value)}
-                        style={{ width: '160px' }}
-                    >
-                        {years.map(y => <option key={y} value={y}>{y === 'All' ? 'All Years' : y}</option>)}
-                    </SelectField>
+
 
                     <SelectField
                         value={selectedStatus}

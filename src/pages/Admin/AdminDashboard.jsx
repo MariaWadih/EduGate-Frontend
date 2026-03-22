@@ -13,8 +13,10 @@ import {
 } from 'recharts';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { Modal, FormField, SelectField, TextareaField } from '../../components/molecules';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const AdminDashboard = () => {
+    const { activeYear } = useAcademicYear();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
@@ -27,7 +29,8 @@ const AdminDashboard = () => {
 
     const fetchData = () => {
         setLoading(true);
-        client.get('/analytics/admin/overview')
+        const params = activeYear?.id ? { academic_year_id: activeYear.id } : {};
+        client.get('/analytics/admin/overview', { params })
             .then(res => {
                 setData(res.data);
                 setLoading(false);
@@ -40,7 +43,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [activeYear]);
 
     const handleFacultySubmit = (e) => {
         e.preventDefault();
@@ -130,8 +133,7 @@ const AdminDashboard = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <header className="flex-responsive" style={{ marginBottom: '40px', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px' }}>OVERVIEW</div>
-                    <h1 style={{ margin: 0 }}>System Intelligence</h1>
+                    <h1 style={{ margin: '0' }}>System Intelligence</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ textAlign: 'right' }}>

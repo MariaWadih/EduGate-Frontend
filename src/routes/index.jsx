@@ -16,6 +16,7 @@ import Students from '../pages/Admin/Students';
 import AcademicManagement from '../pages/Admin/AcademicManagement';
 import StudentPromotion from '../pages/Admin/StudentPromotion';
 import HistoricalRecords from '../pages/Admin/HistoricalRecords';
+import AcademicYearRecords from '../pages/Admin/AcademicYearRecords';
 
 // Teacher
 import TeacherClasses from '../pages/Teachers/TeacherClasses';
@@ -92,9 +93,10 @@ const AppRoutes = () => {
                     <StudentPromotion />
                 </ProtectedRoute>
             } />
-            <Route path="/history" element={
+
+            <Route path="/academic-records" element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                    <HistoricalRecords />
+                    <AcademicYearRecords />
                 </ProtectedRoute>
             } />
 

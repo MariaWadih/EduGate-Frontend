@@ -6,4 +6,5 @@ export const academicYearService = {
     create:   (data)    => client.post('/academic-years', data),
     update:   (id, data) => client.put(`/academic-years/${id}`, data),
     activate: (id)      => client.post(`/academic-years/${id}/activate`),
+    getRecords: (id)    => client.get(`/academic-years/${id}/records`),
 };

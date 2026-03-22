@@ -1,7 +1,7 @@
 import client from '../api/client';
 
 export const teacherService = {
-    getAll: () => client.get('/teachers'),
+    getAll: (params) => client.get('/teachers', { params }),
     getOne: (id) => client.get(`/teachers/${id}`),
     create: (data) => client.post('/teachers', data),
     update: (id, data) => client.put(`/teachers/${id}`, data),

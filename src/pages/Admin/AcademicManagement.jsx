@@ -22,8 +22,6 @@ const AcademicManagement = () => {
     const [viewMode, setViewMode] = useState('hierarchy');
     const [expandedGrades, setExpandedGrades] = useState({});
     const [expandedSections, setExpandedSections] = useState({});
-    // selectedYear now stores the full year object (id + name)
-    const [selectedYear, setSelectedYear] = useState(null);
 
     // Modal states
     const [showGradeModal, setShowGradeModal] = useState(false);
@@ -58,12 +56,7 @@ const AcademicManagement = () => {
 
     const [copyMessage, setCopyMessage] = useState(null);
 
-    // Sync selectedYear to the active year from context on first load
-    useEffect(() => {
-        if (activeYear && !selectedYear) {
-            setSelectedYear(activeYear);
-        }
-    }, [activeYear]);
+
 
     const handleCopy = (text) => {
         navigator.clipboard.writeText(text);
@@ -73,8 +66,8 @@ const AcademicManagement = () => {
 
 
     useEffect(() => {
-        if (selectedYear) fetchHierarchy();
-    }, [selectedYear]);
+        fetchHierarchy();
+    }, [activeYear]);
 
     useEffect(() => {
         if (viewMode === 'calendar') {
@@ -83,11 +76,14 @@ const AcademicManagement = () => {
     }, [viewMode, selectedGrade, selectedSection]);
 
     const fetchHierarchy = async () => {
-        if (!selectedYear) return;
+        // We can proceed even if activeYear is null initially, backend defaults to current session.
+        // But if we want to be safe, we skip if activeYear is explicitly null ONLY if we don't want a default.
+        // Actually, removing the guard entirely is fine because we handled it in params.
         try {
             setLoading(true);
             // Pass academic_year_id (FK) for precise scoping
-            const response = await academicService.getHierarchy({ academic_year_id: selectedYear.id });
+            const params = activeYear?.id ? { academic_year_id: activeYear.id } : {};
+            const response = await academicService.getHierarchy(params);
             const data = Array.isArray(response.data) ? response.data : [];
             if (!Array.isArray(response.data)) {
                 console.error('Academic Data is not an array:', response.data);
@@ -166,12 +162,12 @@ const AcademicManagement = () => {
     };
 
     const handleAddGrade = async () => {
-        if (!newGradeName.trim() || !selectedYear) return;
+        if (!newGradeName.trim() || !activeYear) return;
         try {
             setLoading(true);
             await academicService.createGrade({
                 name: newGradeName,
-                academic_year_id: selectedYear.id,
+                academic_year_id: activeYear.id,
             });
             setNewGradeName('');
             setShowGradeModal(false);
@@ -185,13 +181,13 @@ const AcademicManagement = () => {
     };
 
     const handleAddSection = async () => {
-        if (!newSectionName.trim() || !selectedYear) return;
+        if (!newSectionName.trim() || !activeYear) return;
         try {
             setLoading(true);
             await academicService.createSection({
                 grade_name: activeGrade,
                 section: newSectionName,
-                academic_year_id: selectedYear.id,
+                academic_year_id: activeYear.id,
             });
             setNewSectionName('');
             setShowSectionModal(false);
@@ -357,20 +353,7 @@ const AcademicManagement = () => {
                         </Button>
                     </div>
 
-                    <Select
-                        style={{ height: '42px', width: 'auto' }}
-                        value={selectedYear?.id || ''}
-                        onChange={(e) => {
-                            const yr = academicYears.find(y => String(y.id) === String(e.target.value));
-                            if (yr) setSelectedYear(yr);
-                        }}
-                    >
-                        {academicYears.map(yr => (
-                            <option key={yr.id} value={yr.id}>
-                                {yr.name}{yr.is_active ? ' (Active)' : ''}
-                            </option>
-                        ))}
-                    </Select>
+
 
                     <SearchBar
                         value={searchTerm}
@@ -697,8 +680,8 @@ const AcademicManagement = () => {
                         onChange={(e) => setNewGradeName(e.target.value)}
                         required
                     />
-                    <SelectField label="ACADEMIC YEAR" value={selectedYear?.id || ''} disabled>
-                        <option value={selectedYear?.id}>{selectedYear?.name}</option>
+                    <SelectField label="ACADEMIC YEAR" value={activeYear?.id || ''} disabled>
+                        <option value={activeYear?.id}>{activeYear?.name}</option>
                     </SelectField>
                     <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                         <Button type="submit" style={{ flex: 1 }}>Create Grade</Button>

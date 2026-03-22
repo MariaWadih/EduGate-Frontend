@@ -11,12 +11,12 @@ import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { Table, SearchBar, Modal } from '../../components/molecules';
 
 const HistoricalRecords = () => {
-    const { academicYears } = useAcademicYear();
+    const { academicYears, selectedYear: globalYear } = useAcademicYear();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('students');
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(globalYear?.name || 'All');
 
     useEffect(() => {
         fetchData();
@@ -406,9 +406,10 @@ const HistoricalRecords = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: '2.25rem', fontWeight: 900, letterSpacing: '-0.03em' }}>History & Archives</h1>
+                    <Badge variant="primary">Archive View: {selectedYear}</Badge>
+                    <h1 style={{ margin: '8px 0 0 0', fontSize: '2.25rem', fontWeight: 900, letterSpacing: '-0.03em' }}>History & Archives</h1>
                     <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '1.1rem' }}>
-                        Retrospective view of students, teachers, and academic performance across 2 years.
+                        Retrospective view of students, teachers, and academic performance.
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
