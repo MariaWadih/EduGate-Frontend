@@ -7,8 +7,10 @@ import {
 } from 'lucide-react';
 import { academicYearService } from '../../services';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { Button, Badge, Avatar, Card } from '../../components/atoms';
+
 import { Table, SearchBar } from '../../components/molecules';
+
+import { Button, Badge, Avatar, Card, ProgressBar } from '../../components/atoms';
 
 const AcademicYearRecords = () => {
     const { academicYears, activeYear, selectedYear, setSelectedYear } = useAcademicYear();
@@ -123,57 +125,70 @@ const AcademicYearRecords = () => {
     );
 
     const renderStudentsTab = () => (
-        <div style={{ marginTop: '24px' }}>
-            <Card style={{ padding: '0', overflow: 'hidden' }}>
-                <Table>
-                    <Table.Head>
-                        <Table.Row>
-                            <Table.Header>Student Profile</Table.Header>
-                            <Table.Header>Current Class</Table.Header>
-                            <Table.Header>Enrollment</Table.Header>
-                            <Table.Header>Status</Table.Header>
+    <div style={{ marginTop: '24px' }}>
+        <Card style={{ padding: '0', overflow: 'hidden' }}>
+            <Table>
+                <Table.Head>
+                    <Table.Row>
+                        <Table.Header>Student Profile</Table.Header>
+                        <Table.Header>Current Class</Table.Header>
+                        <Table.Header>Enrollment</Table.Header>
+                        <Table.Header>Average Grade</Table.Header>
+                        <Table.Header>Status</Table.Header>
+                    </Table.Row>
+                </Table.Head>
+                <Table.Body>
+                    {filteredStudents.map((enrollment) => (
+                        <Table.Row key={enrollment.id}>
+                            <Table.Cell>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Avatar name={enrollment.student.user?.name} size={40} />
+                                    <div>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{enrollment.student.user?.name}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{enrollment.student.user?.email}</div>
+                                    </div>
+                                </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                                    {enrollment.school_class?.name} / {enrollment.school_class?.section}
+                                </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <div style={{ fontSize: '0.85rem' }}>{new Date(enrollment.enrollment_date).toLocaleDateString()}</div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                {enrollment.student.grades_avg_score != null ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <ProgressBar value={enrollment.student.grades_avg_score} />
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                                            {Number(enrollment.student.grades_avg_score).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>—</span>
+                                )}
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Badge
+                                    bg={enrollment.status === 'active' ? '#ECFDF5' : '#FEF2F2'}
+                                    color={enrollment.status === 'active' ? '#059669' : '#DC2626'}
+                                >
+                                    {enrollment.status}
+                                </Badge>
+                            </Table.Cell>
                         </Table.Row>
-                    </Table.Head>
-                    <Table.Body>
-                        {filteredStudents.map((enrollment) => (
-                            <Table.Row key={enrollment.id}>
-                                <Table.Cell>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <Avatar name={enrollment.student.user?.name} size={40} />
-                                        <div>
-                                            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{enrollment.student.user?.name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{enrollment.student.user?.email}</div>
-                                        </div>
-                                    </div>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                                        {enrollment.school_class?.name} / {enrollment.school_class?.section}
-                                    </div>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <div style={{ fontSize: '0.85rem' }}>{new Date(enrollment.enrollment_date).toLocaleDateString()}</div>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <Badge 
-                                        bg={enrollment.status === 'active' ? '#ECFDF5' : '#FEF2F2'} 
-                                        color={enrollment.status === 'active' ? '#059669' : '#DC2626'}
-                                    >
-                                        {enrollment.status}
-                                    </Badge>
-                                </Table.Cell>
-                            </Table.Row>
-                        ))}
-                    </Table.Body>
-                </Table>
-            </Card>
-            {filteredStudents.length === 0 && (
-                <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No students currently enrolled in this academic year.
-                </div>
-            )}
-        </div>
-    );
+                    ))}
+                </Table.Body>
+            </Table>
+        </Card>
+        {filteredStudents.length === 0 && (
+            <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No students currently enrolled in this academic year.
+            </div>
+        )}
+    </div>
+);
 
     const renderSubjectsTab = () => (
         <div style={{ marginTop: '24px' }}>
