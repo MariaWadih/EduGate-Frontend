@@ -14,6 +14,8 @@ export const teacherService = {
     getClasses: () => client.get('/analytics/classes'),
     storeAttendance: (data) => client.post('/attendance', data),
     checkAttendance: (classId, date) => client.get(`/attendance/check?class_id=${classId}&date=${date}`),
+    reactivate: (id) => client.post(`/teachers/${id}/reactivate`),
+    getPast: () => client.get('/teachers/past'),
 
     // Materials
     getMaterials: (classId, subjectId) => client.get(`/materials?class_id=${classId}${subjectId ? `&subject_id=${subjectId}` : ''}`),

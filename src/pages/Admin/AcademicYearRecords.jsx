@@ -45,18 +45,24 @@ const AcademicYearRecords = () => {
     const studentsAndClasses = data?.enrollments || [];
     
     // Group teachers by name to see all their subjects
-    const teacherMap = {};
-    teachersAndCourses.forEach(item => {
-        const tid = item.teacher_id;
-        if (!teacherMap[tid]) {
-            teacherMap[tid] = {
-                teacher: item.teacher,
-                assignments: []
-            };
-        }
-        teacherMap[tid].assignments.push(item);
-    });
-    const teacherList = Object.values(teacherMap);
+// NEW
+const teacherMap = {};
+teachersAndCourses.forEach(item => {
+    const tid = item.teacher_id;
+    if (!teacherMap[tid]) {
+        teacherMap[tid] = { teacher: item.teacher, assignments: [] };
+    }
+    teacherMap[tid].assignments.push(item);
+});
+
+// Also include teachers linked to this year but with no assignments
+(data?.teachers || []).forEach(teacher => {
+    if (!teacherMap[teacher.id]) {
+        teacherMap[teacher.id] = { teacher, assignments: [] };
+    }
+});
+
+const teacherList = Object.values(teacherMap);
 
     // Group subjects by class
     const classMap = {};
