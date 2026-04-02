@@ -245,153 +245,143 @@ const TeacherGrades = () => {
 
     return (
         <div style={{ paddingBottom: '60px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', itemsAlign: 'flex-start', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                 <div>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 12px 0' }}>Assessment <span style={{ color: 'var(--primary)' }}>Record</span></h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Enter and manage student grades for tests and exams.</p>
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: 950, margin: '0 0 8px 0', letterSpacing: '-0.03em' }}>Assessment <span style={{ color: 'var(--primary)' }}>Record</span></h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600 }}>Enter and manage student grades for tests and exams.</p>
                 </div>
 
-                <Card style={{ padding: '16px 24px', display: 'flex', gap: '24px', alignItems: 'center', background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+                <div style={{ display: 'flex', background: 'white', padding: '12px 24px', borderRadius: '24px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', gap: '40px', alignItems: 'center' }}>
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Class Average</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: classAverage >= 70 ? 'var(--success)' : (classAverage >= 50 ? 'var(--warning)' : 'var(--danger)') }}>
-                            {classAverage}%
-                        </div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Class Average</div>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 950, color: 'var(--danger)', lineHeight: 1 }}>{classAverage}%</div>
                     </div>
-                    <div style={{ width: '1px', height: '40px', background: '#E2E8F0' }}></div>
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Term</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
-                            {selectedTerm}
-                        </div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Term</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 950, color: 'var(--primary)', lineHeight: 1 }}>{selectedTerm}</div>
                     </div>
-                </Card>
+                </div>
             </div>
 
             {/* Controls Bar */}
-            <Card style={{ padding: '20px', borderRadius: '16px', marginBottom: '32px', display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '16px', flex: 1, minWidth: '300px' }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', marginLeft: '4px' }}>CLASS & SUBJECT</div>
-                        <select
-                            style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color)', fontWeight: 600, outline: 'none' }}
-                            value={currentSelection ? `${currentSelection.classId}|${currentSelection.subjectId}` : ''}
-                            onChange={(e) => {
-                                const [cId, sId] = e.target.value.split('|');
-                                setSelectedClassId(cId);
-                                setSelectedSubjectId(sId);
-                            }}
-                        >
-                            {getOptions().map((opt, i) => (
-                                <option key={i} value={`${opt.classId}|${opt.subjectId}`}>{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div style={{ width: '200px' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', marginLeft: '4px' }}>ASSESSMENT TERM</div>
-                        <select
-                            style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color)', fontWeight: 600, outline: 'none' }}
-                            value={selectedTerm}
-                            onChange={(e) => setSelectedTerm(e.target.value)}
-                        >
-                            {terms.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={18} style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '12px', color: 'var(--text-muted)' }} />
-                        <Input
-                            placeholder="Find student..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            style={{ paddingLeft: '36px', width: '220px' }}
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '100px', justifyContent: 'flex-end', marginRight: '8px' }}>
-                        {saveStatus === 'saved' && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600 }}>
-                                <Check size={16} /> Saved
-                            </span>
-                        )}
-                        {saveStatus === 'saving' && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
-                                <Loader size={16} className="animate-spin" /> Saving...
-                            </span>
-                        )}
-                        {saveStatus === 'error' && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600 }}>
-                                <AlertCircle size={16} /> Error
-                            </span>
-                        )}
-                    </div>
-
-                    <Button
-                        variant="outline"
-                        onClick={handleDownloadPDF}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            minWidth: '150px',
-                            justifyContent: 'center',
-                            borderColor: 'var(--text-main)',
-                            color: 'var(--text-main)',
-                            fontWeight: 600
+            <Card style={{ padding: '24px', borderRadius: '24px', marginBottom: '24px', display: 'flex', gap: '24px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>Class & Subject</div>
+                    <select
+                        style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-color)', fontWeight: 750, fontSize: '0.95rem', background: '#F8FAFC', outline: 'none' }}
+                        value={currentSelection ? `${currentSelection.classId}|${currentSelection.subjectId}` : ''}
+                        onChange={(e) => {
+                            const [cId, sId] = e.target.value.split('|');
+                            setSelectedClassId(cId);
+                            setSelectedSubjectId(sId);
                         }}
                     >
-                        <Download size={18} />
-                        Download PDF
-                    </Button>
+                        {getOptions().map((opt, i) => (
+                            <option key={i} value={`${opt.classId}|${opt.subjectId}`}>{opt.label}</option>
+                        ))}
+                    </select>
                 </div>
-            </Card>
-
-            {notification && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        marginBottom: '24px',
-                        background: notification.type === 'success' ? '#ECFDF5' : (notification.type === 'error' ? '#FEF2F2' : '#EFF6FF'),
-                        color: notification.type === 'success' ? '#047857' : (notification.type === 'error' ? '#B91C1C' : '#1D4ED8'),
-                        border: `1px solid ${notification.type === 'success' ? '#A7F3D0' : (notification.type === 'error' ? '#FECACA' : '#BFDBFE')}`,
+                <div style={{ width: '220px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>Assessment Term</div>
+                    <select
+                        style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-color)', fontWeight: 750, fontSize: '0.95rem', outline: 'none' }}
+                        value={selectedTerm}
+                        onChange={(e) => setSelectedTerm(e.target.value)}
+                    >
+                        {terms.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div style={{ width: '280px', position: 'relative' }}>
+                    <Search size={18} style={{ position: 'absolute', top: '15px', left: '16px', color: 'var(--text-muted)' }} />
+                    <Input
+                        placeholder="Find student..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{ paddingLeft: '44px', paddingRight: '16px', height: '52px', borderRadius: '12px' }}
+                    />
+                </div>
+                <div style={{ paddingBottom: '16px', minWidth: '100px', textAlign: 'center' }}>
+                    <AnimatePresence>
+                        {saveStatus === 'saving' && (
+                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 800 }}>
+                                <Loader size={14} className="animate-spin" /> Saving...
+                            </motion.span>
+                        )}
+                        {saveStatus === 'saved' && (
+                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--success)', fontWeight: 800 }}>
+                                <Check size={14} /> Saved
+                            </motion.span>
+                        )}
+                        {saveStatus === 'error' && (
+                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 800 }}>
+                                <AlertCircle size={14} /> Error
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </div>
+                <Button 
+                    variant="outline" 
+                    onClick={handleDownloadPDF}
+                    style={{ 
+                        height: '52px', 
+                        borderRadius: '12px', 
+                        fontWeight: 850, 
+                        border: '2px solid var(--text-main)', 
+                        color: 'var(--text-main)', 
+                        padding: '0 24px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        fontWeight: 600
+                        gap: '10px'
                     }}
                 >
-                    {notification.type === 'success' ? <CheckCircle size={20} /> : (notification.type === 'error' ? <AlertCircle size={20} /> : <Info size={20} />)}
-                    {notification.message}
-                </motion.div>
-            )}
+                    <Download size={20} /> Download PDF
+                </Button>
+            </Card>
+
+            {/* Error Banner matching screenshot */}
+            <AnimatePresence>
+                {saveStatus === 'error' && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{
+                            background: '#FFF1F2',
+                            border: '1px solid #FECACA',
+                            borderRadius: '16px',
+                            padding: '16px 24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            marginBottom: '24px',
+                            color: '#BE123C',
+                            fontWeight: 700,
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <AlertCircle size={20} />
+                        Failed to auto-save grades.
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '60px' }}>
-                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} style={{ display: 'inline-block', marginBottom: '16px' }}>
-                        <Users size={40} color="var(--primary-light)" />
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                        <Loader size={48} color="var(--primary)" />
                     </motion.div>
-                    <div style={{ color: 'var(--text-muted)' }}>Loading student roster...</div>
                 </div>
-            ) : filteredStudents.length === 0 ? (
-                <Card style={{ padding: '60px', textAlign: 'center', border: '2px dashed var(--border-color)' }}>
-                    <h3 style={{ margin: 0 }}>No students found</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>Try changing the search filter or select a different class.</p>
-                </Card>
             ) : (
-                <div style={{ background: 'white', borderRadius: '20px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                <div style={{ background: 'white', borderRadius: '24px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
-                            <tr>
-                                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student</th>
-                                <th style={{ padding: '16px 24px', textAlign: 'center', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', width: '150px' }}>Score</th>
-                                <th style={{ padding: '16px 24px', textAlign: 'center', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', width: '160px' }}>Max Score</th>
-                                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Comments</th>
+                        <thead>
+                            <tr style={{ background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
+                                <th style={{ padding: '20px 32px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Student</th>
+                                <th style={{ padding: '20px 32px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', width: '150px' }}>
+                                    <span style={{ background: 'var(--primary)', color: 'white', padding: '4px 10px', borderRadius: '6px' }}>Score</span>
+                                </th>
+                                <th style={{ padding: '20px 32px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px' }}>Max Score</th>
+                                <th style={{ padding: '20px 32px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comments</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -400,39 +390,38 @@ const TeacherGrades = () => {
                                 const isPassed = currentGrade.score && (Number(currentGrade.score) / Number(currentGrade.max_score || 100)) >= 0.5;
 
                                 return (
-                                    <tr key={student.id} style={{ borderBottom: idx !== filteredStudents.length - 1 ? '1px solid #F1F5F9' : 'none', transition: 'background 0.2s' }}>
-                                        <td style={{ padding: '16px 24px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <Avatar name={student.user?.name} size={36} />
+                                    <tr key={student.id} style={{ borderBottom: idx < filteredStudents.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                                        <td style={{ padding: '20px 32px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                <Avatar name={student.user?.name} size={42} />
                                                 <div>
-                                                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>{student.user?.name}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID: {String(student.id).padStart(4, '0')}</div>
+                                                    <div style={{ fontWeight: 850, fontSize: '1rem', color: 'var(--text-main)' }}>{student.user?.name}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>ID: {String(student.id).padStart(4, '0')}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px 24px' }}>
+                                        <td style={{ padding: '20px 32px' }}>
                                             <Input
                                                 type="number"
                                                 value={currentGrade.score}
                                                 onChange={e => handleGradeChange(student.id, 'score', e.target.value)}
-                                                placeholder="-"
-                                                style={{ textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: isPassed ? 'var(--success)' : 'var(--danger)' }}
+                                                style={{ textAlign: 'center', height: '48px', fontSize: '1.25rem', fontWeight: 900, color: Number(currentGrade.score) < 50 ? 'var(--danger)' : 'var(--text-main)', border: '1px solid #F1F5F9' }}
                                             />
                                         </td>
-                                        <td style={{ padding: '16px 24px' }}>
+                                        <td style={{ padding: '20px 32px' }}>
                                             <Input
                                                 type="number"
                                                 value={currentGrade.max_score}
                                                 onChange={e => handleGradeChange(student.id, 'max_score', e.target.value)}
-                                                style={{ textAlign: 'center', background: '#F8FAFC', color: 'var(--text-muted)', width: '100%', fontWeight: 600 }}
+                                                style={{ textAlign: 'center', height: '48px', fontSize: '1rem', fontWeight: 700, color: 'var(--text-muted)', background: '#F8FAFC', border: 'none' }}
                                             />
                                         </td>
-                                        <td style={{ padding: '16px 24px' }}>
+                                        <td style={{ padding: '20px 32px' }}>
                                             <Input
                                                 value={currentGrade.comments}
                                                 onChange={e => handleGradeChange(student.id, 'comments', e.target.value)}
                                                 placeholder="Add remarks..."
-                                                style={{ fontSize: '0.9rem' }}
+                                                style={{ height: '48px', borderRadius: '12px', border: '1px solid #F1F5F9', fontWeight: 600 }}
                                             />
                                         </td>
                                     </tr>

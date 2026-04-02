@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Users, BookOpen, ClipboardCheck,
     Bell, LogOut, TrendingUp, Heart, Settings,
     GraduationCap, MessageSquare, CreditCard, ChevronRight,
-    CalendarDays, Trophy, History
+    CalendarDays, Trophy, History, Clock
 } from 'lucide-react';
 import { useAuth } from '../../hooks';
 import { useAcademicYear } from '../../context/AcademicYearContext';
@@ -48,10 +48,12 @@ const Sidebar = ({ className = '' }) => {
             <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ fontWeight: 800, padding: '0 14px 10px 14px', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.12em', color: 'var(--text-muted)', opacity: 0.6 }}>Main Menu</div>
 
-                <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                    <LayoutDashboard size={20} />
-                    Dashboard
-                </NavLink>
+                {user?.role !== 'parent' && (
+                    <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <LayoutDashboard size={20} />
+                        Dashboard
+                    </NavLink>
+                )}
 
                 {user?.role === 'admin' && (
                     <>
@@ -120,7 +122,34 @@ const Sidebar = ({ className = '' }) => {
                     </>
                 )}
 
-                {(user?.role === 'student' || user?.role === 'parent') && (
+                {user?.role === 'parent' ? (
+                    <>
+                        <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <CalendarDays size={20} />
+                            Family Calendar
+                        </NavLink>
+                        <NavLink to="/parent/children" className="nav-link">
+                            <Users size={20} />
+                            My Children
+                        </NavLink>
+                        <NavLink to="/parent/attendance" className="nav-link">
+                            <Clock size={20} />
+                            Attendance Logs
+                        </NavLink>
+                        <NavLink to="/parent/grades" className="nav-link">
+                            <Trophy size={20} />
+                            Academic Grades
+                        </NavLink>
+                        <NavLink to="/assignments" className="nav-link">
+                            <ClipboardCheck size={20} />
+                            Assignments
+                        </NavLink>
+                        <NavLink to="/exams" className="nav-link">
+                            <TrendingUp size={20} />
+                            Exams Monitoring
+                        </NavLink>
+                    </>
+                ) : user?.role === 'student' ? (
                     <>
                         <NavLink to="/student/calendar" className="nav-link">
                             <CalendarDays size={18} />
@@ -134,24 +163,20 @@ const Sidebar = ({ className = '' }) => {
                             <TrendingUp size={20} />
                             Exams
                         </NavLink>
-                        {user?.role === 'student' && (
-                            <>
-                                <NavLink to="/student/courses" className="nav-link">
-                                    <BookOpen size={20} />
-                                    My Courses
-                                </NavLink>
-                                <NavLink to="/student/attendance" className="nav-link">
-                                    <Users size={20} />
-                                    Attendance
-                                </NavLink>
-                                <NavLink to="/student/grades" className="nav-link">
-                                    <Trophy size={20} />
-                                    Performance Record
-                                </NavLink>
-                            </>
-                        )}
+                        <NavLink to="/student/courses" className="nav-link">
+                            <BookOpen size={20} />
+                            My Courses
+                        </NavLink>
+                        <NavLink to="/student/attendance" className="nav-link">
+                            <Users size={20} />
+                            Attendance
+                        </NavLink>
+                        <NavLink to="/student/grades" className="nav-link">
+                            <Trophy size={20} />
+                            Performance Record
+                        </NavLink>
                     </>
-                )}
+                ) : null}
 
                 <div style={{ fontWeight: 800, padding: '24px 14px 10px 14px', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.12em', color: 'var(--text-muted)', opacity: 0.6 }}>Communication</div>
 

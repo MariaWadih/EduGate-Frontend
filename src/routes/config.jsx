@@ -69,6 +69,7 @@ import StudentHomework from '../pages/Students/StudentHomework';
 import TeacherExams from '../pages/Teachers/TeacherExams';
 import StudentExams from '../pages/Students/StudentExams';
 import TakeExam from '../pages/Students/TakeExam';
+import ParentAssignments from '../pages/Parents/ParentAssignments';
 import PlaceholderPage from '../pages/PlaceholderPage';
 
 export const DashboardSwitcher = () => {
@@ -88,6 +89,7 @@ export const AssignmentsSwitcher = () => {
     const { user } = useAuth();
     if (['teacher', 'admin'].includes(user.role)) return <TeacherAssignments />;
     if (user.role === 'student') return <StudentHomework />;
+    if (user.role === 'parent') return <ParentAssignments />;
     return <PlaceholderPage title="Assignments" />;
 };
 

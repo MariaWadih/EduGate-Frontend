@@ -37,6 +37,11 @@ import StudentCalendar from '../pages/Students/StudentCalendar';
 import StudentGrades from '../pages/Students/StudentGrades';
 import TakeExam from '../pages/Students/TakeExam';
 
+// Parent
+import MyChildren from '../pages/Parents/MyChildren';
+import ParentGrades from '../pages/Parents/ParentGrades';
+import ParentAttendance from '../pages/Parents/ParentAttendance';
+
 const AppRoutes = () => {
     return (
         <Routes>
@@ -64,6 +69,23 @@ const AppRoutes = () => {
             <Route path="/settings" element={
                 <ProtectedRoute>
                     <Settings />
+                </ProtectedRoute>
+            } />
+
+            {/* Parent specific routes */}
+            <Route path="/parent/children" element={
+                <ProtectedRoute allowedRoles={['parent']}>
+                    <MyChildren />
+                </ProtectedRoute>
+            } />
+            <Route path="/parent/grades" element={
+                <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentGrades />
+                </ProtectedRoute>
+            } />
+            <Route path="/parent/attendance" element={
+                <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentAttendance />
                 </ProtectedRoute>
             } />
 
