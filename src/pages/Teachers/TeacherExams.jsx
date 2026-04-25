@@ -68,6 +68,15 @@ const TeacherExams = () => {
             formData.append('type', newExam.type);
             formData.append('start_time', newExam.start_time);
             formData.append('end_time', newExam.end_time);
+            
+            let maxScore = newExam.max_score || 100;
+            if (newExam.type === 'mcq') {
+                maxScore = newExam.questions.reduce((sum, q) => sum + (parseFloat(q.points) || 0), 0);
+            }
+            formData.append('max_score', maxScore);
+            
+            if (newExam.description) formData.append('description', newExam.description);
+            if (newExam.duration_minutes) formData.append('duration_minutes', newExam.duration_minutes);
 
             if (newExam.type === 'file') {
                 if (!file) {
@@ -101,7 +110,13 @@ const TeacherExams = () => {
             setExams(res.data);
         } catch (error) {
             console.error('Error creating exam:', error);
-            alert('Failed to create exam');
+            const errors = error.response?.data?.errors;
+            let message = error.response?.data?.message || 'Failed to create exam';
+            if (errors) {
+                const detailedErrors = Object.values(errors).flat().join('\n');
+                message = `Validation Error:\n${detailedErrors}`;
+            }
+            alert(message);
         }
     };
 

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks';
+import { useAcademicYear } from '../context/AcademicYearContext';
 import client from '../api/client';
 import {
     User, Mail, Lock, Shield, Phone, Save,
     CheckCircle2, Bell, Sun, Fingerprint, Activity,
-    ChevronRight, Settings as SettingsIcon, LogOut
+    ChevronRight, Settings as SettingsIcon, LogOut, Calendar, Plus, Zap
 } from 'lucide-react';
 import { Button, Card, Avatar, Input, Toggle, Badge } from '../components/atoms';
 
 const Settings = () => {
     const { user, login } = useAuth();
+    const { activeYear, academicYears, activateYear, createYear, refreshYears } = useAcademicYear();
     const [activeTab, setActiveTab] = useState('personal');
     const [formData, setFormData] = useState({
         name: user?.name || '',
@@ -27,6 +29,11 @@ const Settings = () => {
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // Academic year management state
+    const [yearLoading, setYearLoading] = useState(false);
+    const [showNewYearForm, setShowNewYearForm] = useState(false);
+    const [newYear, setNewYear] = useState({ name: '', start_date: '', end_date: '' });
+
     useEffect(() => {
         if (user?.settings) {
             setPrefs({
@@ -37,6 +44,13 @@ const Settings = () => {
             });
         }
     }, [user]);
+
+    // Automatically synchronize academic cycles when the tab is accessed
+    useEffect(() => {
+        if (activeTab === 'academic') {
+            refreshYears();
+        }
+    }, [activeTab, refreshYears]);
 
     const togglePreference = (key) => {
         const newPrefs = { ...prefs, [key]: !prefs[key] };
@@ -98,7 +112,8 @@ const Settings = () => {
     const sidebarItems = [
         { id: 'personal', icon: <User size={18} />, label: 'Personal Information' },
         { id: 'security', icon: <Shield size={18} />, label: 'Security & Access' },
-        { id: 'preferences', icon: <SettingsIcon size={18} />, label: 'System Preferences' }
+        { id: 'preferences', icon: <SettingsIcon size={18} />, label: 'System Preferences' },
+        ...(user?.role === 'admin' ? [{ id: 'academic', icon: <Calendar size={18} />, label: 'Academic Years' }] : [])
     ];
 
     const preferenceItems = [
@@ -355,6 +370,173 @@ const Settings = () => {
                                                     </div>
                                                 </div>
                                                 <Toggle checked={prefs[pref.id]} onChange={() => togglePreference(pref.id)} />
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'academic' && user?.role === 'admin' && (
+                            <motion.div
+                                key="academic"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <Card style={{ padding: '40px', borderRadius: '24px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+                                        <div>
+                                            <h2 style={{ margin: '0 0 10px 0', fontSize: '1.5rem' }}>Academic Year Management</h2>
+                                            <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 500 }}>Manage school cycles. Only one year can be active at a time.</p>
+                                        </div>
+                                        <Button icon={<Plus size={16} />} onClick={() => setShowNewYearForm(v => !v)}>
+                                            New Year
+                                        </Button>
+                                    </div>
+
+                                    {/* Create new year form */}
+                                    <AnimatePresence>
+                                        {showNewYearForm && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                style={{ overflow: 'hidden', marginBottom: '32px' }}
+                                            >
+                                                <div style={{ padding: '28px', background: 'var(--bg-main)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                                                    <h4 style={{ margin: '0 0 20px 0', fontWeight: 700 }}>Create New Academic Year</h4>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                                                        <div>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: '8px', letterSpacing: '0.06em' }}>YEAR NAME</label>
+                                                            <Input
+                                                                fullWidth
+                                                                placeholder="e.g. 2025-2026"
+                                                                value={newYear.name}
+                                                                onChange={e => setNewYear(p => ({ ...p, name: e.target.value }))}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: '8px', letterSpacing: '0.06em' }}>START DATE</label>
+                                                            <Input
+                                                                type="date"
+                                                                fullWidth
+                                                                value={newYear.start_date}
+                                                                onChange={e => setNewYear(p => ({ ...p, start_date: e.target.value }))}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: '8px', letterSpacing: '0.06em' }}>END DATE</label>
+                                                            <Input
+                                                                type="date"
+                                                                fullWidth
+                                                                value={newYear.end_date}
+                                                                onChange={e => setNewYear(p => ({ ...p, end_date: e.target.value }))}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                                        <Button variant="outline" onClick={() => setShowNewYearForm(false)}>Cancel</Button>
+                                                        <Button
+                                                            disabled={yearLoading || !newYear.name || !newYear.start_date || !newYear.end_date}
+                                                            onClick={async () => {
+                                                                setYearLoading(true);
+                                                                try {
+                                                                    await createYear(newYear);
+                                                                    setNewYear({ name: '', start_date: '', end_date: '' });
+                                                                    setShowNewYearForm(false);
+                                                                } catch (err) {
+                                                                    alert(err.response?.data?.message || 'Failed to create year');
+                                                                } finally {
+                                                                    setYearLoading(false);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {yearLoading ? 'Creating...' : 'Create Year'}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    {/* Year list */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {(academicYears || []).sort((a, b) => b.name.localeCompare(a.name)).map(year => (
+                                            <motion.div
+                                                key={year.id}
+                                                whileHover={{ scale: 1.005 }}
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    padding: '24px 28px',
+                                                    borderRadius: '16px',
+                                                    border: `2px solid ${year.is_active ? 'var(--primary)' : 'var(--border-color)'}`,
+                                                    background: year.is_active ? 'var(--primary-light)' : 'var(--bg-main)',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                                    <div style={{
+                                                        padding: '12px',
+                                                        background: year.is_active ? 'var(--primary)' : 'white',
+                                                        color: year.is_active ? 'white' : 'var(--text-muted)',
+                                                        borderRadius: '12px',
+                                                        boxShadow: 'var(--shadow-sm)'
+                                                    }}>
+                                                        <Calendar size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                                            {year.name}
+                                                            {year.is_active && (
+                                                                <Badge bg="var(--primary)" color="white" style={{ marginLeft: '12px', fontSize: '0.65rem', fontWeight: 800 }}>ACTIVE</Badge>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>
+                                                            {year.start_date ? new Date(year.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                                            {' → '}
+                                                            {year.end_date ? new Date(year.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                                        </div>
+                                                        <div style={{ marginTop: '4px' }}>
+                                                            <span style={{
+                                                                fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                                                                color: year.status === 'active' ? '#059669' : year.status === 'upcoming' ? '#6366F1' : '#9CA3AF'
+                                                            }}>
+                                                                {year.status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {!year.is_active && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="small"
+                                                        icon={<Zap size={14} />}
+                                                        disabled={yearLoading}
+                                                        onClick={async () => {
+                                                            if (!window.confirm(`Switch to academic year "${year.name}"? This will deactivate the current year.`)) return;
+                                                            setYearLoading(true);
+                                                            try {
+                                                                await activateYear(year.id);
+                                                            } catch (err) {
+                                                                alert('Failed to switch year');
+                                                            } finally {
+                                                                setYearLoading(false);
+                                                            }
+                                                        }}
+                                                        style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontWeight: 700 }}
+                                                    >
+                                                        Set Active
+                                                    </Button>
+                                                )}
+                                                {year.is_active && (
+                                                    <Badge bg="rgba(16,185,129,0.1)" color="#059669" style={{ fontWeight: 700, padding: '8px 16px' }}>
+                                                        Current Year
+                                                    </Badge>
+                                                )}
                                             </motion.div>
                                         ))}
                                     </div>

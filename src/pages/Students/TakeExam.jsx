@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Clock, Send, AlertCircle, Upload, FileText,
     CheckCircle2, ChevronRight, ChevronLeft,
-    Timer, HelpCircle, Download, FileUp, Zap
+Timer, HelpCircle, Download, FileUp, Zap, BookOpen
 } from 'lucide-react';
 import client from '../../api/client';
 import { Button, Card, Badge, Label } from '../../components/atoms';

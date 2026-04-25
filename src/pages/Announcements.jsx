@@ -48,15 +48,37 @@ const Announcements = () => {
             .finally(() => setIsSubmitting(false));
     };
 
-    const filteredAnnouncements = filter === 'all'
-        ? announcements
-        : announcements.filter(ann => ann.target_role === filter);
+    const filteredAnnouncements = (announcements || []).filter(ann => {
+        const role = (ann.target_role || '').toLowerCase().trim();
+        const classId = ann.target_class_id;
+        const isClassTargeted = role === 'class' || !!classId;
+
+        // 1. All Messages tab shows everything fetched from API
+        if (filter === 'all') return true;
+
+        // 2. Global broadcasts show in every tab
+        if (role === 'all') return true;
+
+        // 3. Faculty Hub Tab
+        if (filter === 'teacher') {
+            return role === 'teacher' || isClassTargeted;
+        }
+
+        // 4. Student Life Tab
+        if (filter === 'student') {
+            return role === 'student' || isClassTargeted;
+        }
+
+        // 5. Direct role match fallback
+        return role === filter;
+    });
 
     const getRoleColor = (role) => {
         switch (role) {
             case 'all': return { bg: 'var(--primary-light)', text: 'var(--primary)', border: 'rgba(79, 70, 229, 0.1)' };
             case 'teacher': return { bg: '#FEF3C7', text: '#D97706', border: 'rgba(217, 119, 6, 0.1)' };
-            case 'student': return { bg: '#DCFCE7', text: '#16A34A', border: 'rgba(22, 163, 74, 0.1)' };
+            case 'student':
+            case 'class': return { bg: '#DCFCE7', text: '#16A34A', border: 'rgba(22, 163, 74, 0.1)' };
             default: return { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' };
         }
     };
@@ -149,9 +171,13 @@ const Announcements = () => {
             {/* Announcements List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 <AnimatePresence mode="popLayout">
-                    {filteredAnnouncements.length > 0 ? (
-                        filteredAnnouncements.map((ann, idx) => {
+                    {filteredAnnouncements && filteredAnnouncements.length > 0 ? (
+                        filteredAnnouncements.map((ann) => {
                             const style = getRoleColor(ann.target_role);
+                            const roleLabel = ann.target_class_id 
+                                ? `SEC: ${ann.target_class?.name || 'Class'}` 
+                                : (ann.target_role === 'all' ? 'PLATFORM' : (ann.target_role || 'General').toUpperCase());
+
                             return (
                                 <motion.div
                                     key={ann.id}
@@ -179,7 +205,7 @@ const Announcements = () => {
                                                             border: `1px solid ${style.border}`
                                                         }}
                                                     >
-                                                        {ann.target_class_id ? `SEC: ${ann.target_class?.name || 'Class'}` : (ann.target_role === 'all' ? 'PLATFORM' : ann.target_role.toUpperCase())}
+                                                        {roleLabel}
                                                     </Badge>
                                                     {ann.priority === 'high' && (
                                                         <Badge bg="#FEE2E2" color="#EF4444" style={{ fontSize: '0.7rem', fontWeight: 800 }}>

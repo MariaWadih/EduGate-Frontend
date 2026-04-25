@@ -1,7 +1,7 @@
 import client from '../api/client';
 
 export const studentService = {
-    getAll: () => client.get('/students'),
+    getAll: (params) => client.get('/students', { params }),
     getOne: (id) => client.get(`/students/${id}`),
     create: (data) => client.post('/students', data),
     update: (id, data) => client.put(`/students/${id}`, data),

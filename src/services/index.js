@@ -3,8 +3,10 @@ export * from './studentService';
 export * from './teacherService';
 export * from './parentService';
 export * from './academicService';
+export * from './academicYearService';
 export * from './announcementService';
 export * from './analyticsService';
 export * from './feedbackService';
 export * from './materialService';
 export * from './promotionService';
+

@@ -9,9 +9,13 @@ import { Button, Badge, Avatar, Card, ProgressBar } from '../../components/atoms
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
 
 import { useStudents, useClasses } from '../../hooks';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const Students = () => {
-    const { data: students, loading: studentsLoading, error: studentsError, refetch: refetchStudents } = useStudents();
+    const { activeYear } = useAcademicYear();
+    const { data: students, loading: studentsLoading, error: studentsError, refetch: refetchStudents } = useStudents(
+        activeYear?.id ? { academic_year_id: activeYear.id } : {}
+    );
     const { data: classes, loading: classesLoading, error: classesError } = useClasses();
 
     const studentsList = students || [];
@@ -22,7 +26,6 @@ const Students = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [selectedGrade, setSelectedGrade] = useState('All');
-    const [selectedYear, setSelectedYear] = useState('All');
     const [selectedStatus, setSelectedStatus] = useState('active');
 
     const [formData, setFormData] = useState({
@@ -40,7 +43,6 @@ const Students = () => {
     const fetchData = async () => {
         await refetchStudents();
     };
-
 
     const handleOpenAdd = () => {
         setIsEditMode(false);
@@ -104,12 +106,10 @@ const Students = () => {
         const matchesSearch = s.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesGrade = selectedGrade === 'All' || s.school_class?.name === selectedGrade;
-        const matchesYear = selectedYear === 'All' || s.school_class?.academic_year === selectedYear;
         const matchesStatus = selectedStatus === 'All' || s.status === selectedStatus;
-        return matchesSearch && matchesGrade && matchesYear && matchesStatus;
+        return matchesSearch && matchesGrade && matchesStatus;
     });
 
-    const years = ['All', ...new Set(classesList.map(c => c.academic_year))];
     const gradeLevels = ['All', ...new Set(classesList.map(c => c.name))];
 
     const topStudents = studentsList
@@ -128,7 +128,9 @@ const Students = () => {
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 style={{ margin: 0 }}>Student Management</h1>
+                <div>
+                    <h1 style={{ margin: '0' }}>Student Management</h1>
+                </div>
                 <Button onClick={handleOpenAdd}>
                     <Plus size={18} />
                     Enroll Student
@@ -144,10 +146,6 @@ const Students = () => {
                     />
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <SelectField value={selectedYear} onChange={e => setSelectedYear(e.target.value)} style={{ width: '160px' }}>
-                        <option value="All">All Years</option>
-                        {years.filter(y => y !== 'All').map(y => <option key={y} value={y}>{y}</option>)}
-                    </SelectField>
                     <SelectField value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)} style={{ width: '160px' }}>
                         <option value="All">All Grades</option>
                         {gradeLevels.filter(g => g !== 'All').map(g => <option key={g} value={g}>{g}</option>)}

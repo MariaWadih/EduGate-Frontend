@@ -7,15 +7,15 @@ import {
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { SearchBar, Modal, FormField, Table, SelectField } from '../../components/molecules';
 import { promotionService, studentService } from '../../services';
-import { useClasses } from '../../hooks';
+import client from '../../api/client';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const StudentPromotion = () => {
-    const { data: classes, refetch: refetchClasses } = useClasses();
-    const classesList = classes || [];
+    const { activeYear, academicYears, selectedYear } = useAcademicYear();
 
     const [loading, setLoading] = useState(false);
-    const [fromYear, setFromYear] = useState('2023-2024');
-    const [toYear, setToYear] = useState('2024-2025');
+    const [fromYear, setFromYear] = useState('');
+    const [toYear, setToYear] = useState('');
     const [fromClassId, setFromClassId] = useState('');
     const [toClassId, setToClassId] = useState('');
     const [candidates, setCandidates] = useState([]);
@@ -23,8 +23,26 @@ const StudentPromotion = () => {
     const [failedStudents, setFailedStudents] = useState(new Set());
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [statistics, setStatistics] = useState(null);
+    // Year-specific class lists fetched from the dedicated endpoint
+    const [fromYearClasses, setFromYearClasses] = useState([]);
+    const [toYearClasses, setToYearClasses] = useState([]);
 
-    const availableYears = ['2023-2024', '2024-2025', '2025-2026'];
+    // Derive year list from DB
+    const availableYears = (academicYears || []).map(y => y.name).sort();
+
+    // Set defaults once active year loads
+    useEffect(() => {
+        if (activeYear && !fromYear) {
+            setFromYear(activeYear.name);
+            
+            // Generate toYear name automatically (e.g. 2023-2024 -> 2024-2025)
+            const [start, end] = activeYear.name.split('-').map(Number);
+            if (start && end) {
+                const nextYearName = `${start + 1}-${end + 1}`;
+                setToYear(nextYearName);
+            }
+        }
+    }, [activeYear]);
 
     const fetchCandidates = async () => {
         if (!fromYear) return;
@@ -70,6 +88,27 @@ const StudentPromotion = () => {
             console.error('Failed to fetch statistics:', err);
         }
     };
+
+    // Fetch classes for a specific year string from the dedicated endpoint
+    const fetchClassesForYear = async (year, setter) => {
+        if (!year) { setter([]); return; }
+        try {
+            const res = await client.get('/promotions/classes-for-year', { params: { academic_year: year } });
+            setter(res.data || []);
+        } catch {
+            setter([]);
+        }
+    };
+
+    // Get unique grades for the source and target years
+    const uniqueFromGrades = Array.from(new Map(fromYearClasses.map(c => [c.name, c])).values())
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+    const uniqueToGrades = Array.from(new Map(toYearClasses.map(c => [c.name, c])).values())
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+    useEffect(() => { fetchClassesForYear(fromYear, setFromYearClasses); }, [fromYear]);
+    useEffect(() => { fetchClassesForYear(toYear, setToYearClasses); }, [toYear]);
 
     useEffect(() => {
         fetchCandidates();
@@ -168,7 +207,8 @@ const StudentPromotion = () => {
                 from_academic_year: fromYear,
                 to_academic_year: toYear
             });
-            await refetchClasses();
+            // Refresh the toYear class list after initialization
+            await fetchClassesForYear(toYear, setToYearClasses);
             alert('✅ Class structure initialized for ' + toYear);
             fetchCandidates();
         } catch (err) {
@@ -191,8 +231,7 @@ const StudentPromotion = () => {
         setSelectedStudents(resetSelection);
     };
 
-    const toYearClasses = classesList.filter(c => c.academic_year === toYear);
-    const fromYearClasses = classesList.filter(c => c.academic_year === fromYear);
+    // toYearClasses and fromYearClasses are now managed by fetchClassesForYear above
 
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -326,11 +365,11 @@ const StudentPromotion = () => {
                     <div style={{ minWidth: '220px', flex: 1 }}>
                         <SelectField label="Bulk Destination" value={toClassId} onChange={e => setToClassId(e.target.value)}>
                             <option value="">{toYearClasses.length > 0 ? 'Select Target Class...' : 'No classes found in ' + toYear}</option>
-                            {toYearClasses.map(c => (
-                                <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                            {uniqueToGrades.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </SelectField>
-                        {toYearClasses.length === 0 && (
+                        {uniqueToGrades.length < uniqueFromGrades.length && (
                             <div
                                 onClick={handleInitializeClasses}
                                 style={{
@@ -345,7 +384,7 @@ const StudentPromotion = () => {
                                 }}
                             >
                                 <RefreshCw size={12} className={loading ? 'spinning' : ''} />
-                                Initialize structure from {fromYear}
+                                Sync class structure from {fromYear}
                             </div>
                         )}
                     </div>
@@ -404,6 +443,45 @@ const StudentPromotion = () => {
                     </div>
                 </div>
             </Card>
+
+            {/* Class Sync Alert */}
+            {uniqueToGrades.length < uniqueFromGrades.length && (
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }} 
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{ 
+                        background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(79, 70, 229, 0.1))',
+                        border: '1px solid rgba(79, 70, 229, 0.3)',
+                        padding: '24px 40px',
+                        borderRadius: '24px',
+                        marginBottom: '40px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        boxShadow: '0 20px 50px -15px rgba(79, 70, 229, 0.15)'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div style={{ background: 'var(--primary)', color: 'white', padding: '12px', borderRadius: '15px' }}>
+                            <TrendingUp size={24} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1.2rem', letterSpacing: '-0.01em' }}>Missing Class Structure?</div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 500 }}>
+                                The target year ({toYear}) is missing grades (Grade 10, Grade 11, etc). Promotion destinations must be pre-defined.
+                            </div>
+                        </div>
+                    </div>
+                    <Button 
+                        onClick={handleInitializeClasses} 
+                        disabled={loading}
+                        style={{ padding: '14px 32px', fontWeight: 700, borderRadius: '15px', background: 'var(--primary)', boxShadow: '0 10px 20px -5px var(--primary-glow)' }}
+                    >
+                        <RefreshCw size={18} className={loading ? 'spinning' : ''} />
+                        Sync {fromYear} Structure to {toYear}
+                    </Button>
+                </motion.div>
+            )}
 
             {/* Candidates Selection Table */}
             {candidates.length > 0 ? (
@@ -507,9 +585,9 @@ const StudentPromotion = () => {
                                                         outline: 'none'
                                                     }}
                                                 >
-                                                    <option value="">Select Destination...</option>
-                                                    {toYearClasses.map(c => (
-                                                        <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                                                    <option value="">Select Grade...</option>
+                                                    {uniqueToGrades.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
                                                     ))}
                                                 </select>
                                             )}
