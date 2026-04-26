@@ -1,18 +1,17 @@
 // src/services/aiService.js
 
-// No more full ngrok URL — just a local path
 const AI_BASE_URL = "/api";
 
 export const sendMessageToAI = async (message) => {
+  const token = localStorage.getItem("token");
+
   const response = await fetch(`${AI_BASE_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify({
-      requesterId: "user001",
-      role: "student",
-      targetUserId: "user001",
       message: message,
     }),
   });
@@ -22,5 +21,5 @@ export const sendMessageToAI = async (message) => {
   }
 
   const data = await response.json();
-  return data.reply || data.message || data.response || data.answer || data.text || JSON.stringify(data);
+  return data.text;
 };
