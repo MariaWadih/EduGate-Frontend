@@ -39,6 +39,11 @@ const AcademicManagement = () => {
     const [newSectionName, setNewSectionName] = useState('');
     const [editValue, setEditValue] = useState('');
 
+
+    //new teachers states
+    const [teachers, setTeachers] = useState([]);
+const [selectedTeacherId, setSelectedTeacherId] = useState('');
+
     // Schedule states
     const [schedules, setSchedules] = useState([]);
     const [selectedGrade, setSelectedGrade] = useState('');
@@ -139,27 +144,29 @@ const AcademicManagement = () => {
         }));
     };
 
-    const handleAddSubject = async () => {
-        if (!newSubjectName.trim()) return;
-        try {
-            setLoading(true);
-            await academicService.createGradeSubject({
-                grade_name: activeGrade,
-                subject_name: newSubjectName,
-                subject_code: newSubjectCode
-            });
-            setNewSubjectName('');
-            setNewSubjectCode('');
-            setShowSubjectModal(false);
-
-            await fetchHierarchy();
-        } catch (err) {
-            console.error('Failed to add subject:', err);
-            alert('Failed to add subject');
-        } finally {
-            setLoading(false);
-        }
-    };
+const handleAddSubject = async () => {
+    if (!newSubjectName.trim()) return;
+    if (!selectedTeacherId) return alert('Please select a teacher');
+    try {
+        setLoading(true);
+        await academicService.createGradeSubject({
+            grade_name:   activeGrade,
+            subject_name: newSubjectName,
+            subject_code: newSubjectCode,
+            teacher_id:   selectedTeacherId  // add this
+        });
+        setNewSubjectName('');
+        setNewSubjectCode('');
+        setSelectedTeacherId('');
+        setShowSubjectModal(false);
+        await fetchHierarchy();
+    } catch (err) {
+        console.error('Failed to add subject:', err);
+        alert('Failed to add subject');
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleAddGrade = async () => {
         if (!newGradeName.trim() || !activeYear) return;
@@ -243,34 +250,34 @@ const AcademicManagement = () => {
     };
 
     const handleAddSchedule = async () => {
-        if (!newSchedule.subject_id) return alert('Please select a subject');
-        try {
-            const grade = academicData.find(g => g.name === selectedGrade);
-            const section = grade?.sections.find(s => s.name === selectedSection);
+    if (!newSchedule.subject_id) return alert('Please select a subject');
+    try {
+        const grade = academicData.find(g => g.name === selectedGrade);
+        const section = grade?.sections.find(s => s.name === selectedSection);
+        if (!section) return alert('Please select a grade and section');
 
-            if (!section) return alert('Please select a grade and section');
-
-            setActionLoading(true);
-            await academicService.createSchedule({
-                ...newSchedule,
-                class_id: section.id
-            });
-            setShowScheduleModal(false);
-            setNewSchedule({
-                subject_id: '',
-                day_of_week: 'Monday',
-                start_time: '08:00',
-                end_time: '09:30',
-                room: ''
-            });
-            await fetchSchedules();
-        } catch (err) {
-            console.error('Failed to add schedule:', err);
-            alert('Failed to add schedule entry');
-        } finally {
-            setActionLoading(false);
-        }
-    };
+        setActionLoading(true);
+        await academicService.createSchedule({
+            ...newSchedule,
+            class_id: section.id
+        });
+        setShowScheduleModal(false);
+        setNewSchedule({
+            subject_id: '',
+            day_of_week: 'Monday',
+            start_time: '08:00',
+            end_time: '09:30',
+            room: ''
+        });
+        await fetchSchedules();
+    } catch (err) {
+        // Show the specific conflict message from backend
+        const message = err.response?.data?.message || 'Failed to add schedule entry';
+        alert(message);
+    } finally {
+        setActionLoading(false);
+    }
+};
 
     const handleDeleteSchedule = async (scheduleId) => {
         if (!window.confirm('Are you sure you want to delete this class entry?')) return;
@@ -395,11 +402,15 @@ const AcademicManagement = () => {
                                             {grade.name} <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1.1rem', marginLeft: '8px' }}>({(grade.sections || []).length} Sections)</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                            <Button
+                                           <Button
                                                 size="small"
                                                 variant="outline"
                                                 icon={<BookOpen size={14} />}
-                                                onClick={() => { setActiveGrade(grade.name); setShowSubjectModal(true); }}
+                                                onClick={() => {
+                                                    setActiveGrade(grade.name);
+                                                    setShowSubjectModal(true);
+                                                    client.get('/teachers/list').then(res => setTeachers(res.data));
+                                                }}
                                             >
                                                 Add Subject
                                             </Button>
@@ -712,32 +723,43 @@ const AcademicManagement = () => {
             </Modal>
 
             <Modal
-                isOpen={showSubjectModal}
-                title={`Add Subject to ${activeGrade}`}
-                onClose={() => { setShowSubjectModal(false); setNewSubjectName(''); setNewSubjectCode(''); }}
-            >
-                <form onSubmit={e => { e.preventDefault(); handleAddSubject(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <FormField
-                        label="SUBJECT NAME"
-                        placeholder="e.g. Advanced Physics"
-                        value={newSubjectName}
-                        onChange={(e) => setNewSubjectName(e.target.value)}
-                        required
-                    />
-                    <FormField
-                        label="SUBJECT CODE"
-                        placeholder="e.g. PHY401"
-                        value={newSubjectCode}
-                        onChange={(e) => setNewSubjectCode(e.target.value)}
-                        required
-                    />
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                        <Button type="submit" style={{ flex: 1 }}>Add Subject</Button>
-                        <Button variant="outline" style={{ flex: 1 }} onClick={() => { setShowSubjectModal(false); setNewSubjectName(''); setNewSubjectCode(''); }}>Cancel</Button>
-                    </div>
-                </form>
-            </Modal>
-
+    isOpen={showSubjectModal}
+    title={`Add Subject to ${activeGrade}`}
+    onClose={() => { setShowSubjectModal(false); setNewSubjectName(''); setNewSubjectCode(''); setSelectedTeacherId(''); }}
+>
+    <form onSubmit={e => { e.preventDefault(); handleAddSubject(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <FormField
+            label="SUBJECT NAME"
+            placeholder="e.g. Advanced Physics"
+            value={newSubjectName}
+            onChange={(e) => setNewSubjectName(e.target.value)}
+            required
+        />
+        <FormField
+            label="SUBJECT CODE"
+            placeholder="e.g. PHY401"
+            value={newSubjectCode}
+            onChange={(e) => setNewSubjectCode(e.target.value)}
+            required
+        />
+        {/* Add this teacher dropdown */}
+        <SelectField
+            label="ASSIGN TEACHER"
+            value={selectedTeacherId}
+            onChange={(e) => setSelectedTeacherId(e.target.value)}
+            required
+        >
+            <option value="">Select a Teacher</option>
+            {teachers.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+        </SelectField>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+            <Button type="submit" style={{ flex: 1 }}>Add Subject</Button>
+            <Button variant="outline" style={{ flex: 1 }} onClick={() => { setShowSubjectModal(false); setNewSubjectName(''); setNewSubjectCode(''); setSelectedTeacherId(''); }}>Cancel</Button>
+        </div>
+    </form>
+</Modal>
             <Modal
                 isOpen={showEditModal}
                 title={`Edit ${itemType}`}

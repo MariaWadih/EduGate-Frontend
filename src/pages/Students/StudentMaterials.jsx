@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { BookOpen, FileText, Download, Clock, Info, Search, Filter, ChevronDown, ChevronRight, Folder, Layers, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../hooks';

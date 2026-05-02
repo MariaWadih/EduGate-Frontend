@@ -19,7 +19,7 @@ const Parents = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingId, setEditingId] = useState(null);
-
+const [studentSearch, setStudentSearch] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -51,29 +51,28 @@ const Parents = () => {
         }
     };
 
-    const handleOpenAdd = () => {
-        setIsEditMode(false);
-        setEditingId(null);
-        setFormData({
-            name: '',
-            email: '',
-            password: 'password',
-            student_ids: []
-        });
-        setIsModalOpen(true);
-    };
+   // In handleOpenAdd:
+const handleOpenAdd = () => {
+    setIsEditMode(false);
+    setEditingId(null);
+    setFormData({ name: '', email: '', password: 'password', student_ids: [] });
+    setStudentSearch(''); // add this
+    setIsModalOpen(true);
+};
 
-    const handleOpenEdit = (parent) => {
-        setIsEditMode(true);
-        setEditingId(parent.id);
-        setFormData({
-            name: parent.user.name,
-            email: parent.user.email,
-            password: '',
-            student_ids: parent.students.map(s => s.id)
-        });
-        setIsModalOpen(true);
-    };
+// In handleOpenEdit:
+const handleOpenEdit = (parent) => {
+    setIsEditMode(true);
+    setEditingId(parent.id);
+    setFormData({
+        name: parent.user.name,
+        email: parent.user.email,
+        password: '',
+        student_ids: parent.students.map(s => s.id)
+    });
+    setStudentSearch(''); // add this
+    setIsModalOpen(true);
+};
 
     const handleStudentToggle = (studentId) => {
         setFormData(prev => ({
@@ -313,47 +312,79 @@ const Parents = () => {
                     </div>
 
                     <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.875rem', fontWeight: 600 }}>Link Students</label>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '8px',
-                            maxHeight: '200px',
-                            overflowY: 'auto',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '8px',
-                            padding: '12px'
-                        }}>
-                            {students.map(student => (
-                                <label key={student.id} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    padding: '4px'
-                                }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.student_ids.includes(student.id)}
-                                        onChange={() => handleStudentToggle(student.id)}
-                                    />
-                                    <span style={{
-                                        fontSize: '0.875rem',
-                                        color: student.status === 'active' ? 'var(--text-main)' : 'var(--text-light)',
-                                        opacity: student.status === 'active' ? 1 : 0.6,
-                                        textDecoration: student.status === 'active' ? 'none' : 'line-through'
-                                    }}>
-                                        {student.user?.name}
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                        ({student.school_class?.name || 'No Class'}) • {student.status}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
+    <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.875rem', fontWeight: 600 }}>Link Students</label>
+    
+    {/* Add this search input */}
+    <input
+        type="text"
+        placeholder="Search students by name or class..."
+        value={studentSearch}
+        onChange={e => setStudentSearch(e.target.value)}
+        style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            border: '1px solid var(--border-color)',
+            fontSize: '0.875rem',
+            marginBottom: '8px',
+            outline: 'none',
+            boxSizing: 'border-box'
+        }}
+    />
 
+    <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '8px',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '12px'
+    }}>
+        {students
+            .filter(student =>
+                student.user?.name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                student.school_class?.name?.toLowerCase().includes(studentSearch.toLowerCase())
+            )
+            .map(student => (
+                <label key={student.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    padding: '4px'
+                }}>
+                    <input
+                        type="checkbox"
+                        checked={formData.student_ids.includes(student.id)}
+                        onChange={() => handleStudentToggle(student.id)}
+                    />
+                    <span style={{
+                        fontSize: '0.875rem',
+                        color: student.status === 'active' ? 'var(--text-main)' : 'var(--text-light)',
+                        opacity: student.status === 'active' ? 1 : 0.6,
+                        textDecoration: student.status === 'active' ? 'none' : 'line-through'
+                    }}>
+                        {student.user?.name}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        ({student.school_class?.name || 'No Class'}) • {student.status}
+                    </span>
+                </label>
+            ))
+        }
+        {students.filter(student =>
+            student.user?.name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+            student.school_class?.name?.toLowerCase().includes(studentSearch.toLowerCase())
+        ).length === 0 && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '0.875rem' }}>
+                No students found
+            </div>
+        )}
+    </div>
+</div>
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                         <Button type="submit" disabled={isSaving}>
