@@ -5,6 +5,7 @@ import { BookOpen, FileText, Download, Clock, Info, Search, Filter, ChevronDown,
 import { useAuth } from '../../hooks';
 import { studentService } from '../../services/studentService';
 import { teacherService } from '../../services/teacherService';
+import { motion } from 'framer-motion';
 import { Card, Badge, Button, Avatar, Input } from '../../components/atoms';
 
 const StudentMaterials = () => {

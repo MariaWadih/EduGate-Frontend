@@ -71,6 +71,7 @@ import StudentExams from '../pages/Students/StudentExams';
 import TakeExam from '../pages/Students/TakeExam';
 import ParentAssignments from '../pages/Parents/ParentAssignments';
 import PlaceholderPage from '../pages/PlaceholderPage';
+import ParentExams from '../pages/Parents/ParentExams';
 
 export const DashboardSwitcher = () => {
     const { user } = useAuth();
@@ -97,5 +98,6 @@ export const ExamsSwitcher = () => {
     const { user } = useAuth();
     if (['teacher', 'admin'].includes(user.role)) return <TeacherExams />;
     if (user.role === 'student') return <StudentExams />;
+    if (user.role === 'parent') return <ParentExams />;
     return <PlaceholderPage title="Exams & Quizzes" />;
 };
