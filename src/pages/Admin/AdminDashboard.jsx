@@ -260,19 +260,31 @@ const AdminDashboard = () => {
 
             <div className="grid-1-2" style={{ marginBottom: '40px' }}>
                 {/* Registration Trend */}
-                <Card style={{ padding: '32px' }}>
-                    <h3 style={{ marginBottom: '8px' }}>User Growth</h3>
-                    <p style={{ margin: '0 0 24px 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>New registrations per month</p>
-                    <div style={{ height: '240px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={charts.registration_trend}>
-                                <XAxis dataKey="month" hide />
-                                <Tooltip />
-                                <Bar dataKey="count" fill="var(--secondary)" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Card>
+<Card style={{ padding: '32px' }}>
+    <h3 style={{ marginBottom: '8px' }}>Enrollment Growth</h3>
+    <p style={{ margin: '0 0 24px 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+        Total students enrolled per academic year
+    </p>
+    <div style={{ height: '240px', width: '100%' }}>
+        <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={charts.registration_trend}>
+                <XAxis
+                    dataKey="academic_year"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }}
+                />
+                <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#9CA3AF' }}
+                />
+                <Tooltip formatter={(value) => [`${value} Students`, 'Enrolled']} />
+                <Bar dataKey="count" fill="var(--secondary)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+        </ResponsiveContainer>
+    </div>
+</Card>
 
                 <Card style={{ padding: '32px', background: 'linear-gradient(to right, #4F46E5, #0EA5E9)', color: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', height: '100%' }}>
