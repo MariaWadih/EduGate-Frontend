@@ -48,6 +48,25 @@ const TeacherExams = () => {
         }
     };
 
+
+
+    const handleDeleteExam = async (examId) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this exam?');
+    if (!confirmDelete) return;
+
+    try {
+        await client.delete(`/exams/${examId}`);
+
+        // update UI without refetch
+        setExams(prev => prev.filter(e => e.id !== examId));
+
+        alert('Exam deleted successfully');
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete exam');
+    }
+};
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -148,45 +167,144 @@ const TeacherExams = () => {
                     const isFinished = now > end;
 
                     return (
-                        <Card key={exam.id} style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                <Badge
-                                    bg={exam.type === 'mcq' ? 'var(--primary-light)' : '#E0F2FE'}
-                                    color={exam.type === 'mcq' ? 'var(--primary)' : '#0369A1'}
-                                >
-                                    {exam.type.toUpperCase()}
-                                </Badge>
-                                <Badge bg={isActive ? '#DCFCE7' : (isUpcoming ? '#FEF9C3' : '#F3F4F6')} color={isActive ? '#166534' : (isUpcoming ? '#854D0E' : '#4B5563')}>
-                                    {isActive ? 'Active Now' : (isUpcoming ? 'Upcoming' : 'Closed')}
-                                </Badge>
-                            </div>
+<Card key={exam.id} style={{ padding: '20px', position: 'relative' }}>
 
-                            <h3 style={{ margin: '0 0 8px 0' }}>{exam.title}</h3>
-                            <div style={{ display: 'flex', gap: '12px', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Calendar size={14} /> {start.toLocaleDateString()}
-                                </span>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Clock size={14} /> {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </div>
+    {/* Top row */}
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+        
+        {/* Badges */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <Badge
+                bg={exam.type === 'mcq' ? 'var(--primary-light)' : '#E0F2FE'}
+                color={exam.type === 'mcq' ? 'var(--primary)' : '#0369A1'}
+            >
+                {exam.type.toUpperCase()}
+            </Badge>
 
-                            <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '16px', marginTop: '16px' }}>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '12px' }}>
-                                    {exam.subject?.name} — Section {exam.school_class?.section}
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <Button variant="ghost" size="small" onClick={() => navigate(`/teacher/exams/${exam.id}/view`)}>
-                                        <Eye size={16} style={{ marginRight: '8px' }} />
-                                        View
-                                    </Button>
-                                    <Button variant="ghost" size="small" onClick={() => navigate(`/teacher/exams/${exam.id}/submissions`)}>
-                                        <Users size={16} style={{ marginRight: '8px' }} />
-                                        Submissions
-                                    </Button>
-                                </div>
-                            </div>
-                        </Card>
+            <Badge
+                bg={isActive ? '#DCFCE7' : (isUpcoming ? '#FEF9C3' : '#F3F4F6')}
+                color={isActive ? '#166534' : (isUpcoming ? '#854D0E' : '#4B5563')}
+            >
+                {isActive ? 'Active' : (isUpcoming ? 'Upcoming' : 'Closed')}
+            </Badge>
+        </div>
+
+        {/* Actions menu */}
+        <div style={{ position: 'relative' }}>
+            <Button
+                variant="ghost"
+                size="small"
+                onClick={() =>
+                    setSelectedExam(selectedExam === exam.id ? null : exam.id)
+                }
+            >
+                <MoreVertical size={18} />
+            </Button>
+
+            {selectedExam === exam.id && (
+                <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '36px',
+                    background: '#fff',
+                    border: '1px solid #eee',
+                    borderRadius: '10px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                    padding: '6px',
+                    minWidth: '150px',
+                    zIndex: 20
+                }}>
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        style={{ width: '100%', justifyContent: 'flex-start' }}
+                        onClick={() => navigate(`/teacher/exams/${exam.id}/view`)}
+                    >
+                        <Eye size={14} style={{ marginRight: '8px' }} />
+                        View
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        style={{ width: '100%', justifyContent: 'flex-start' }}
+                        onClick={() => navigate(`/teacher/exams/${exam.id}/submissions`)}
+                    >
+                        <Users size={14} style={{ marginRight: '8px' }} />
+                        Submissions
+                    </Button>
+
+                    <div style={{ height: '1px', background: '#eee', margin: '6px 0' }} />
+
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        style={{
+                            width: '100%',
+                            justifyContent: 'flex-start',
+                            color: 'var(--danger)'
+                        }}
+                        onClick={() => handleDeleteExam(exam.id)}
+                    >
+                        <Trash2 size={14} style={{ marginRight: '8px' }} />
+                        Delete
+                    </Button>
+                </div>
+            )}
+        </div>
+    </div>
+
+    {/* Title */}
+    <h3 style={{ margin: '0 0 6px 0' }}>
+        {exam.title}
+    </h3>
+
+    {/* Subject + Section */}
+    <div style={{
+        fontSize: '0.85rem',
+        color: 'var(--text-muted)',
+        marginBottom: '14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
+    }}>
+📚 <strong>{exam.subject?.name}</strong>
+<span>•</span>
+🏫 {exam.school_class?.name} - Section {exam.school_class?.section}
+    </div>
+
+    {/* Date & Time */}
+    <div style={{
+        display: 'flex',
+        gap: '14px',
+        color: 'var(--text-muted)',
+        fontSize: '0.85rem',
+        marginBottom: '16px'
+    }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Calendar size={14} />
+            {start.toLocaleDateString()}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Clock size={14} />
+            {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+    </div>
+
+    {/* Footer (optional info area) */}
+    <div style={{
+        borderTop: '1px solid #F3F4F6',
+        paddingTop: '12px',
+        fontSize: '0.8rem',
+        color: 'var(--text-muted)',
+        display: 'flex',
+        justifyContent: 'space-between'
+    }}>
+        <span>Max Score: {exam.max_score}</span>
+        {exam.duration_minutes && <span>{exam.duration_minutes} min</span>}
+    </div>
+
+</Card>
                     );
                 })}
             </div>
