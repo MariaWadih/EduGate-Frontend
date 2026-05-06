@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import client from '../../api/client';
 import {
     Users, TrendingUp, AlertTriangle, CreditCard,
     ChevronRight, MessageSquare, Bell, Calendar, GraduationCap, Plus,
-    Award, Target, Activity, ArrowUpRight, ArrowDownRight
+    Award, Target, Activity, ArrowUpRight, ArrowDownRight,
+    Search, Filter, Zap, BarChart3, PieChart,
+    ShieldCheck, Globe
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, Cell
+    BarChart, Bar, Cell, AreaChart, Area, PieChart as RePieChart, Pie
 } from 'recharts';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
 import { Modal, FormField, SelectField, TextareaField } from '../../components/molecules';
@@ -21,15 +25,28 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const [activeModal, setActiveModal] = useState(null);
+    const [activeTab, setActiveTab] = useState('overview');
 
     // Form states
     const [facultyForm, setFacultyForm] = useState({ name: '', email: '', role: 'teacher' });
     const [announcementForm, setAnnouncementForm] = useState({ title: '', message: '', target_role: 'all' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Filter states
+    const [filters, setFilters] = useState({
+        term: 'All Terms',
+        grade: 'All Grades',
+        segment: 'All Students'
+    });
+
     const fetchData = () => {
         setLoading(true);
-        const params = activeYear?.id ? { academic_year_id: activeYear.id } : {};
+        const params = {
+            ...(activeYear?.id ? { academic_year_id: activeYear.id } : {}),
+            term: filters.term !== 'All Terms' ? filters.term : undefined,
+            grade: filters.grade !== 'All Grades' ? filters.grade : undefined,
+            segment: filters.segment !== 'All Students' ? filters.segment : undefined
+        };
         client.get('/analytics/admin/overview', { params })
             .then(res => {
                 setData(res.data);
@@ -43,516 +60,628 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchData();
-    }, [activeYear]);
+    }, [activeYear, filters]);
 
     const handleFacultySubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        client.post('/users/register', {
-            ...facultyForm,
-            password: 'password' // Default password for demo
-        })
+        client.post('/users/register', { ...facultyForm, password: 'password' })
             .then(() => {
-                alert('Faculty member registered successfully!');
                 setFacultyForm({ name: '', email: '', role: 'teacher' });
                 setActiveModal(null);
                 fetchData();
             })
-            .catch(err => {
-                console.error(err);
-                alert(err.response?.data?.message || 'Failed to register faculty');
-            })
-            .finally(() => setIsSubmitting(false));
-    };
-
-    const handleAnnouncementSubmit = (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        client.post('/announcements', announcementForm)
-            .then(() => {
-                alert('Announcement broadcasted successfully!');
-                setAnnouncementForm({ title: '', message: '', target_role: 'all' });
-                setActiveModal(null);
-                fetchData();
-            })
-            .catch(err => {
-                console.error(err);
-                alert(err.response?.data?.message || 'Failed to send announcement');
-            })
+            .catch(err => console.error(err))
             .finally(() => setIsSubmitting(false));
     };
 
     if (loading && !data) return (
-        <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                <Activity size={48} color="var(--primary)" />
+        <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
+            <motion.div 
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
+                transition={{ duration: 2, repeat: Infinity }}
+            >
+                <Zap size={64} color="var(--primary)" fill="var(--primary-light)" />
             </motion.div>
         </div>
     );
 
-    if (!data) return <div>Error loading dashboard data.</div>;
+    if (!data) return <div>Critical error loading business intelligence data.</div>;
 
     const { metrics, feedback, rankings, charts, insights } = data;
 
-    const handleExport = () => {
-        const rows = [
-            ['Sonic Nebula', 'System Intelligence Report'],
-            ['Generated At', new Date().toLocaleString()],
-            [''],
-            ['KEY METRICS'],
-            ['Metric', 'Value'],
-            ['Total Students', metrics.total_students],
-            ['Total Teachers', metrics.total_teachers],
-            ['Total Classes', metrics.total_classes],
-            ['Collection Rate', `${metrics.collection_rate}%`],
-            [''],
-            ['TOP PERFORMING CLASSES'],
-            ['Class', 'Avg Score', 'Students'],
-            ...rankings.top_classes.map(c => [c.name, c.avg_score, c.student_count]),
-            [''],
-            ['ELITE STUDENTS'],
-            ['Name', 'GPA', 'Class'],
-            ...rankings.best_students.map(s => [s.name, s.gpa, s.class]),
-        ];
-
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + rows.map(e => e.join(",")).join("\n");
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `intelligence_report_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#0EA5E9'];
+    const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'];
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <header className="flex-responsive" style={{ marginBottom: '40px', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            style={{ padding: '20px 0', maxWidth: '1600px', margin: '0 auto' }}
+        >
+            {/* Top Navigation & Brand */}
+            <header style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '32px' 
+            }}>
                 <div>
-                    <h1 style={{ margin: '0' }}>System Intelligence</h1>
-                </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>LAST UPDATED</div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>{new Date().toLocaleTimeString()}</div>
-                    </div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+                        Command Center
+                        <span style={{ color: 'var(--primary)', marginLeft: '8px' }}>.</span>
+                    </h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: '4px 0 0 0' }}>
+                        Strategic intelligence for EduGate Institution
+                    </p>
                 </div>
             </header>
 
-            <div className="overview-banner" style={{ marginBottom: '40px' }}>
-                <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px' }}>
-                    <h2 style={{ fontSize: '2.25rem', marginBottom: '16px', fontWeight: 800 }}>Global Performance Insight</h2>
-                    <p style={{ fontSize: '1.1rem', opacity: 0.95, lineHeight: 1.6, marginBottom: '32px' }}>
-                        Platform network is currently managing <span style={{ fontWeight: 800 }}>{metrics.total_teachers} active faculty members</span>.
-                        We've identified {metrics.chronic_absenteeism} critical insights this week across the institution.
-                    </p>
-                    <div className="flex-responsive" style={{ gap: '16px' }}>
-                        <Button
-                            onClick={() => navigate('/feedback')}
-                            style={{ background: 'white', color: 'var(--primary)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        >
-                            <Activity size={18} />
-                            View Real-time Logs
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={handleExport}
-                            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(10px)' }}
-                        >
-                            Export Analytics
-                        </Button>
-                    </div>
+            {/* Strategic Filter Bar */}
+            <Card style={{ 
+                padding: '12px 24px', 
+                borderRadius: '16px', 
+                marginBottom: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '24px',
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid var(--border-color)',
+                boxShadow: 'var(--shadow-sm)'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                    <Filter size={14} />
+                    GLOBAL FILTERS:
                 </div>
-            </div>
-
-            <div className="grid-4" style={{ marginBottom: '40px' }}>
-                {[
-                    { label: 'Total Teachers', value: metrics.total_teachers, trend: '+4.2%', up: true, icon: <Users size={20} />, color: '#4F46E5', bg: '#EEF2FF', path: '/teachers' },
-                    { label: 'Collection Rate', value: `${metrics.collection_rate}%`, trend: '-0.4%', up: false, icon: <CreditCard size={20} />, color: '#10B981', bg: '#DCFCE7', path: '/financial' },
-                    { label: 'Total Students', value: metrics.total_students, trend: '+12', up: true, icon: <GraduationCap size={20} />, color: '#F59E0B', bg: '#FEF3C7', path: '/students' },
-                    { label: 'Active Alerts', value: metrics.chronic_absenteeism, trend: 'Critical', up: false, icon: <AlertTriangle size={20} />, color: '#EF4444', bg: '#FEE2E2', path: '/feedback' }
-                ].map((stat, i) => (
-                    <Card
-                        key={i}
-                        style={{ padding: '24px', cursor: 'pointer' }}
-                        onClick={() => navigate(stat.path)}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                            <div style={{ background: stat.bg, color: stat.color, padding: '12px', borderRadius: '12px' }}>
-                                {stat.icon}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: stat.up ? 'var(--success)' : 'var(--danger)' }}>
-                                {stat.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                                {stat.trend}
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>{stat.value}</div>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
-                    </Card>
-                ))}
-            </div>
-
-            <div className="grid-2-1" style={{ marginBottom: '40px' }}>
-                {/* Performance Trend Chart */}
-                <Card style={{ padding: '32px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                        <div>
-                            <h3 style={{ margin: 0 }}>Performance Trends</h3>
-                            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Average grades across all subjects</p>
-                        </div>
+                
+                <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
+                    <div style={{ width: '180px' }}>
                         <SelectField
-                            value="All Terms"
-                            onChange={() => { }}
-                            style={{ width: 'auto', padding: '8px 12px' }}
+                            value={filters.term}
+                            onChange={(e) => setFilters({ ...filters, term: e.target.value })}
+                            style={{ margin: 0, padding: '8px 12px', fontSize: '0.875rem' }}
                         >
                             <option>All Terms</option>
                             <option>Mid Term</option>
                             <option>Final Term</option>
                         </SelectField>
                     </div>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={charts.performance_trend}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} domain={[0, 100]} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
-                                    formatter={(value) => [`${value}%`, 'Avg. Score']}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="avg_score"
-                                    stroke="var(--secondary)"
-                                    strokeWidth={4}
-                                    dot={{ r: 6, fill: 'var(--secondary)', strokeWidth: 3, stroke: '#fff' }}
-                                    activeDot={{ r: 8, strokeWidth: 0 }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                    
+                    <div style={{ width: '180px' }}>
+                        <SelectField
+                            value={filters.grade}
+                            onChange={(e) => setFilters({ ...filters, grade: e.target.value })}
+                            style={{ margin: 0, padding: '8px 12px', fontSize: '0.875rem' }}
+                        >
+                            <option>All Grades</option>
+                            <option>Grade 9</option>
+                            <option>Grade 10</option>
+                            <option>Grade 11</option>
+                            <option>Grade 12</option>
+                        </SelectField>
                     </div>
-                </Card>
 
-                {/* Enrollment by Class Bar Chart */}
-                <Card style={{ padding: '32px' }}>
-                    <h3 style={{ marginBottom: '8px' }}>Class Distribution</h3>
-                    <p style={{ margin: '0 0 24px 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total students per class section</p>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={charts.students_by_class} layout="vertical" margin={{ left: -20 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="class_name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600 }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} formatter={(value) => [`${value} Students`, 'Count']} />
-                                <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
-                                    {charts.students_by_class.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div style={{ width: '180px' }}>
+                        <SelectField
+                            value={filters.segment}
+                            onChange={(e) => setFilters({ ...filters, segment: e.target.value })}
+                            style={{ margin: 0, padding: '8px 12px', fontSize: '0.875rem' }}
+                        >
+                            <option>All Students</option>
+                            <option>High Performers</option>
+                            <option>At Risk</option>
+                            <option>New Enrollees</option>
+                        </SelectField>
                     </div>
-                </Card>
+                </div>
+
+                <Button 
+                    variant="outline" 
+                    onClick={() => setFilters({ term: 'All Terms', grade: 'All Grades', segment: 'All Students' })}
+                    style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: '10px' }}
+                >
+                    Clear Filters
+                </Button>
+            </Card>
+
+            {/* Strategic Tabs */}
+            <div style={{ 
+                display: 'flex', 
+                gap: '24px', 
+                marginBottom: '32px', 
+                borderBottom: '1px solid var(--border-color)',
+                paddingBottom: '2px'
+            }}>
+                {[
+                    { id: 'overview', label: 'Executive Overview', icon: <Globe size={18} /> },
+                    { id: 'academic', label: 'Academic Performance', icon: <BarChart3 size={18} /> },
+                    { id: 'operations', label: 'Operational Metrics', icon: <Zap size={18} /> }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '12px 16px',
+                            background: 'none',
+                            border: 'none',
+                            borderBottom: activeTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',
+                            color: activeTab === tab.id ? 'var(--text-main)' : 'var(--text-muted)',
+                            fontWeight: activeTab === tab.id ? 700 : 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        {tab.icon}
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
-            <div className="grid-1-2" style={{ marginBottom: '40px' }}>
-                {/* Registration Trend */}
-<Card style={{ padding: '32px' }}>
-    <h3 style={{ marginBottom: '8px' }}>Enrollment Growth</h3>
-    <p style={{ margin: '0 0 24px 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        Total students enrolled per academic year
-    </p>
-    <div style={{ height: '240px', width: '100%' }}>
-        <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={charts.registration_trend}>
-                <XAxis
-                    dataKey="academic_year"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }}
-                />
-                <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: '#9CA3AF' }}
-                />
-                <Tooltip formatter={(value) => [`${value} Students`, 'Enrolled']} />
-                <Bar dataKey="count" fill="var(--secondary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-        </ResponsiveContainer>
-    </div>
-</Card>
-
-                <Card style={{ padding: '32px', background: 'linear-gradient(to right, #4F46E5, #0EA5E9)', color: 'white' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', height: '100%' }}>
-                        <div style={{ maxWidth: '60%' }}>
-                            <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '16px' }}>Performance Optimizer</h3>
-                            <p style={{ opacity: 0.9, fontSize: '0.9375rem', lineHeight: 1.6 }}>
-                                Grade 10-A is showing a <span style={{ fontWeight: 800 }}>14% higher</span> engagement rate than the school average.
-                                Consider applying their Mathematics teaching module to other sections.
-                            </p>
-                            <Button style={{ background: 'white', color: 'var(--primary)', marginTop: '24px' }}>
-                                View Full Intelligence Report
-                            </Button>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', opacity: 0.2 }}>
-                            <TrendingUp size={120} strokeWidth={3} />
-                        </div>
-                    </div>
-                </Card>
-            </div>
-
-            <div className="grid-3" style={{ marginBottom: '40px' }}>
-                {/* Top Performing Classes */}
-                <Card style={{ padding: '32px', cursor: 'pointer' }} onClick={() => navigate('/academy')}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <div style={{ background: '#EEF2FF', color: 'var(--primary)', padding: '8px', borderRadius: '8px' }}>
-                            <Award size={20} />
-                        </div>
-                        <h3 style={{ margin: 0 }}>Top Classes</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {rankings.top_classes.map((cls, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-light)', width: '24px' }}>{i + 1}</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{cls.name}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cls.student_count} Students</div>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontWeight: 800, color: 'var(--success)' }}>{Math.round(cls.avg_score)}%</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Avg Score</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-
-                {/* Top Students */}
-                <Card style={{ padding: '32px', cursor: 'pointer' }} onClick={() => navigate('/students')}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <div style={{ background: '#DCFCE7', color: 'var(--success)', padding: '8px', borderRadius: '8px' }}>
-                            <Target size={20} />
-                        </div>
-                        <h3 style={{ margin: 0 }}>Elite Performers</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {rankings.best_students.map((student, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <Avatar name={student.name} size={32} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, fontSize: '0.9375rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{student.name}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.class}</div>
-                                </div>
-                                <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1.125rem' }}>{student.gpa}</div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-
-                {/* System Insights */}
-                <Card style={{ padding: '32px', background: 'var(--text-main)', color: 'white', cursor: 'pointer' }} onClick={() => navigate('/feedback')}>
-                    <h3 style={{ color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Bell size={20} />
-                        AI Insights
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {insights.length > 0 ? insights.map((insight, i) => (
-                            <div key={i} style={{ padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                    <Badge style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', px: '6px', py: '2px', background: insight.severity === 'high' ? 'var(--danger)' : 'var(--warning)', borderRadius: '4px' }}>
-                                        {insight.severity}
+            {/* Main Content Area */}
+            <AnimatePresence mode="wait">
+                {activeTab === 'overview' && (
+                    <motion.div
+                        key="overview"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                    >
+                        {/* Summary Banner */}
+                        <div style={{ 
+                            background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+                            borderRadius: '24px',
+                            padding: '40px',
+                            color: 'white',
+                            marginBottom: '32px',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: '0 20px 40px rgba(49, 46, 129, 0.15)'
+                        }}>
+                            <div style={{ position: 'relative', zIndex: 2 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                    <Badge style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '4px 12px' }}>
+                                        <ShieldCheck size={12} style={{ marginRight: '6px' }} />
+                                        SYSTEM STABLE
                                     </Badge>
-                                    <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{new Date(insight.created_at).toLocaleDateString()}</span>
                                 </div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 500, lineHeight: 1.4 }}>{insight.message}</div>
+                                <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '16px', letterSpacing: '-0.03em' }}>
+                                    Strategic Growth Index: <span style={{ color: '#818cf8' }}>+12.4%</span>
+                                </h2>
+                                <p style={{ fontSize: '1.1rem', opacity: 0.8, maxWidth: '700px', lineHeight: 1.6 }}>
+                                    EduGate is currently servicing <span style={{ fontWeight: 700 }}>{metrics.total_students} students</span> across 
+                                    {metrics.total_classes} active sections. System efficiency has increased by 4% since the last quarter.
+                                </p>
                             </div>
-                        )) : (
-                            <div style={{ textAlign: 'center', opacity: 0.6, padding: '40px 0' }}>
-                                <Activity size={32} style={{ marginBottom: '12px' }} />
-                                <div style={{ fontSize: '0.875rem' }}>No critical insights currently detected. System is stable.</div>
-                            </div>
-                        )}
-                    </div>
-                </Card>
-            </div>
-
-            <div className="grid-2-1" style={{ marginBottom: '40px' }}>
-                <Card style={{ padding: 0, cursor: 'pointer' }} onClick={() => navigate('/feedback')}>
-                    <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ margin: 0 }}>Recent User Feedback</h3>
-                        <Button variant="outline" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>Review All</Button>
-                    </div>
-                    <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        {feedback.map((msg, i) => (
-                            <div key={i} style={{ display: 'flex', gap: '20px', paddingBottom: i < feedback.length - 1 ? '24px' : 0, borderBottom: i < feedback.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
-                                <Avatar name={msg.name} size={48} style={{ borderRadius: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>{msg.name} <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '8px' }}>{msg.role}</span></div>
-                                        <div style={{ color: 'var(--text-light)', fontSize: '0.75rem', fontWeight: 600 }}>{msg.time}</div>
-                                    </div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', lineHeight: 1.5 }}>{msg.msg}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-
-                <section style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    <Card style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '32px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                            <h3 style={{ margin: 0 }}>Quick Actions</h3>
-                            <Button variant="outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => navigate('/settings')}>Configure</Button>
+                            {/* Abstract background shapes */}
+                            <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)', borderRadius: '50%' }} />
+                            <div style={{ position: 'absolute', bottom: '-100px', left: '10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+
+                        {/* High-Level Metrics */}
+                        <div className="grid-4" style={{ marginBottom: '32px' }}>
                             {[
-                                {
-                                    label: 'Register New Faculty',
-                                    desc: 'Onboard new teachers or staff',
-                                    icon: <Plus size={20} />,
-                                    color: 'var(--primary)',
-                                    action: () => setActiveModal('faculty')
-                                },
-                                {
-                                    label: 'Broadcast Announcement',
-                                    desc: 'Send school-wide notifications',
-                                    icon: <Bell size={20} />,
-                                    color: 'var(--warning)',
-                                    action: () => setActiveModal('announcement')
-                                },
-                                {
-                                    label: 'Financial Audit',
-                                    desc: 'Review collection performance',
-                                    icon: <CreditCard size={20} />,
-                                    color: 'var(--success)',
-                                    action: () => navigate('/financial')
-                                },
-                                {
-                                    label: 'Academic Configuration',
-                                    desc: 'Manage terms and grading',
-                                    icon: <Calendar size={20} />,
-                                    color: 'var(--secondary)',
-                                    action: () => navigate('/academy')
-                                }
-                            ].map((action, i) => (
-                                <Card
-                                    key={i}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '16px',
-                                        padding: '16px',
-                                        cursor: 'pointer',
-                                        textAlign: 'left',
-                                        width: '100%',
-                                        background: 'var(--bg-main)',
-                                        border: '1px solid var(--border-color)'
-                                    }}
-                                    onClick={action.action}
-                                >
-                                    <div style={{
-                                        color: action.color,
-                                        background: 'white',
-                                        padding: '10px',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                                    }}>
-                                        {action.icon}
+                                { label: 'Attendance Velocity', value: `${metrics.attendance_rate}%`, trend: '+1.2%', icon: <Activity />, color: '#10B981' },
+                                { label: 'Teacher Capacity', value: metrics.total_teachers, trend: 'Optimal', icon: <Users />, color: '#6366F1' },
+                                { label: 'Student Retention', value: '98.2%', trend: '+0.4%', icon: <GraduationCap />, color: '#F59E0B' },
+                                { label: 'Academic Proficiency', value: `${metrics.proficiency_rate}%`, trend: 'Target: 85%', icon: <Target />, color: '#EC4899' }
+                            ].map((stat, i) => (
+                                <Card key={i} style={{ 
+                                    padding: '24px', 
+                                    borderRadius: '20px', 
+                                    border: '1px solid var(--border-color)',
+                                    background: 'white',
+                                    boxShadow: 'var(--shadow-sm)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                        <div style={{ color: stat.color, background: `${stat.color}10`, padding: '12px', borderRadius: '14px' }}>
+                                            {stat.icon}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: stat.color }}>{stat.trend}</div>
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-main)' }}>{action.label}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{action.desc}</div>
-                                    </div>
-                                    <ChevronRight size={16} style={{ opacity: 0.3 }} />
+                                    <div style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '4px' }}>{stat.value}</div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{stat.label}</div>
                                 </Card>
                             ))}
                         </div>
-                        <div style={{ marginTop: '24px', padding: '16px', background: 'var(--primary-light)', borderRadius: '12px', border: '1px solid rgba(79, 70, 229, 0.1)' }}>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                <MessageSquare size={18} color="var(--primary)" />
-                                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--primary)' }}>Need help? Use the AI Assistant</div>
-                            </div>
+
+                        {/* Charts Section */}
+                        <div className="grid-2-1" style={{ marginBottom: '32px' }}>
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Institutional Performance Trend</h3>
+                                        <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Aggregate student score variance by term</p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <Badge style={{ background: '#EEF2FF', color: '#6366F1', border: 'none' }}>2024-2025</Badge>
+                                    </div>
+                                </div>
+                                <div style={{ height: '350px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={charts.performance_trend}>
+                                            <defs>
+                                                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.1}/>
+                                                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} dy={10} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                                            <Tooltip 
+                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                                                itemStyle={{ fontWeight: 700 }}
+                                            />
+                                            <Area 
+                                                type="monotone" 
+                                                dataKey="avg_score" 
+                                                stroke="#6366F1" 
+                                                strokeWidth={4} 
+                                                fillOpacity={1} 
+                                                fill="url(#colorScore)" 
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Capacity Utilization</h3>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Student distribution across top sections</p>
+                                <div style={{ height: '350px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={charts.students_by_class} layout="vertical" margin={{ left: -20 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="class_name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} width={100} />
+                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                            <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={24}>
+                                                {charts.students_by_class.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
                         </div>
-                    </Card>
-                </section>
+
+                        {/* Strategic Insight Section */}
+                        <div className="grid-3" style={{ marginBottom: '32px' }}>
+                            {/* Insight Column */}
+                            <Card style={{ padding: '32px', borderRadius: '24px', background: 'var(--text-main)', color: 'white' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                                    <Zap size={24} color="#F59E0B" />
+                                    <h3 style={{ margin: 0, color: 'white' }}>Strategic Insights</h3>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {insights.map((insight, i) => (
+                                        <div key={i} style={{ 
+                                            padding: '16px', 
+                                            background: 'rgba(255,255,255,0.05)', 
+                                            borderRadius: '16px',
+                                            border: '1px solid rgba(255,255,255,0.1)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                <Badge style={{ 
+                                                    fontSize: '0.65rem', 
+                                                    background: insight.severity === 'high' ? '#EF4444' : '#F59E0B',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    fontWeight: 900
+                                                }}>
+                                                    {insight.severity.toUpperCase()}
+                                                </Badge>
+                                                <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>{new Date(insight.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <div style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{insight.message}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+
+                            {/* Top Talent */}
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                                    <Award size={24} color="var(--primary)" />
+                                    <h3 style={{ margin: 0 }}>Top Scholars</h3>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {rankings.best_students.map((student, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                            <div style={{ position: 'relative' }}>
+                                                <Avatar name={student.name} size={44} style={{ borderRadius: '12px' }} />
+                                                <div style={{ 
+                                                    position: 'absolute', 
+                                                    top: '-6px', 
+                                                    right: '-6px', 
+                                                    background: 'var(--primary)', 
+                                                    color: 'white', 
+                                                    fontSize: '0.65rem',
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    borderRadius: '50%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 900
+                                                }}>
+                                                    {i + 1}
+                                                </div>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{student.name}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.class}</div>
+                                            </div>
+                                            <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.25rem' }}>{student.gpa}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+
+                            {/* Operational Efficiency */}
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                                    <Activity size={24} color="#10B981" />
+                                    <h3 style={{ margin: 0 }}>Class Efficiency</h3>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {rankings.top_classes.map((cls, i) => (
+                                        <div key={i}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{cls.name}</span>
+                                                <span style={{ fontWeight: 900, color: '#10B981' }}>{Math.round(cls.avg_score)}%</span>
+                                            </div>
+                                            <div style={{ height: '8px', background: '#F3F4F6', borderRadius: '4px', overflow: 'hidden' }}>
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${cls.avg_score}%` }}
+                                                    transition={{ duration: 1, delay: i * 0.1 }}
+                                                    style={{ height: '100%', background: COLORS[i % COLORS.length] }} 
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <Button variant="outline" style={{ width: '100%', marginTop: '32px', borderRadius: '12px' }} onClick={() => navigate('/academy')}>
+                                    Full Academic Audit
+                                </Button>
+                            </Card>
+                        </div>
+                    </motion.div>
+                )}
+                
+                {activeTab === 'academic' && (
+                    <motion.div
+                        key="academic"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                    >
+                        <div className="grid-2-1" style={{ marginBottom: '32px' }}>
+                            {/* Subject Performance */}
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Subject Proficiency Matrix</h3>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Comparative analysis of average scores by department</p>
+                                <div style={{ height: '350px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={[
+                                            { subject: 'Mathematics', score: 78 },
+                                            { subject: 'Science', score: 82 },
+                                            { subject: 'English', score: 85 },
+                                            { subject: 'History', score: 72 },
+                                            { subject: 'Art', score: 91 },
+                                            { subject: 'Physics', score: 75 }
+                                        ]}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                                            <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600 }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} domain={[0, 100]} />
+                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                            <Bar dataKey="score" radius={[6, 6, 0, 0]} barSize={32}>
+                                                {(Array.from({length: 6})).map((_, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+
+                            {/* Grade Distribution */}
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Grade Distribution</h3>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Student density by grade bracket</p>
+                                <div style={{ height: '350px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RePieChart>
+                                            <Pie
+                                                data={[
+                                                    { name: 'A (90-100)', value: 15 },
+                                                    { name: 'B (80-89)', value: 35 },
+                                                    { name: 'C (70-79)', value: 30 },
+                                                    { name: 'D (60-69)', value: 15 },
+                                                    { name: 'F (<60)', value: 5 }
+                                                ]}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={100}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {(Array.from({length: 5})).map((_, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                        </RePieChart>
+                                    </ResponsiveContainer>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '16px' }}>
+                                        {['A', 'B', 'C', 'D', 'F'].map((g, i) => (
+                                            <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[i % COLORS.length] }} />
+                                                {g}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+
+                        <div className="grid-3" style={{ marginBottom: '32px' }}>
+                            <Card style={{ padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7', background: '#F0FDF4' }}>
+                                <div style={{ color: '#10B981', marginBottom: '12px' }}><Award size={24} /></div>
+                                <h4 style={{ margin: '0 0 4px 0', color: '#065F46' }}>High Proficiency Subject</h4>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#047857' }}>Visual Arts</div>
+                                <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', color: '#065F46', opacity: 0.8 }}>91% avg. proficiency across all sections.</p>
+                            </Card>
+                            <Card style={{ padding: '24px', borderRadius: '20px', border: '1px solid #FEF3C7', background: '#FFFBEB' }}>
+                                <div style={{ color: '#F59E0B', marginBottom: '12px' }}><Activity size={24} /></div>
+                                <h4 style={{ margin: '0 0 4px 0', color: '#92400E' }}>Most Improved Subject</h4>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#B45309' }}>English Lit.</div>
+                                <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', color: '#92400E', opacity: 0.8 }}>+14% growth compared to Term 1.</p>
+                            </Card>
+                            <Card style={{ padding: '24px', borderRadius: '20px', border: '1px solid #FEE2E2', background: '#FEF2F2' }}>
+                                <div style={{ color: '#EF4444', marginBottom: '12px' }}><AlertTriangle size={24} /></div>
+                                <h4 style={{ margin: '0 0 4px 0', color: '#991B1B' }}>Attention Required</h4>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#B91C1C' }}>Mathematics</div>
+                                <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', color: '#991B1B', opacity: 0.8 }}>78% avg. Critical gap in Grade 9 Geometry.</p>
+                            </Card>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'operations' && (
+                    <motion.div
+                        key="operations"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                    >
+                        <div className="grid-2-1" style={{ marginBottom: '32px' }}>
+                            {/* Attendance Trend */}
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Institutional Attendance Velocity</h3>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Real-time student presence monitoring</p>
+                                <div style={{ height: '350px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={[
+                                            { day: 'Mon', rate: 94 },
+                                            { day: 'Tue', rate: 96 },
+                                            { day: 'Wed', rate: 92 },
+                                            { day: 'Thu', rate: 95 },
+                                            { day: 'Fri', rate: 89 },
+                                            { day: 'Sat', rate: 85 }
+                                        ]}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                                            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} domain={[80, 100]} />
+                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
+                                            <Line type="monotone" dataKey="rate" stroke="#10B981" strokeWidth={4} dot={{ r: 6, fill: '#10B981', strokeWidth: 3, stroke: '#fff' }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+
+                            {/* Enrollment Growth */}
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Enrollment Growth</h3>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Annual student registration volume</p>
+                                <div style={{ height: '350px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={charts.registration_trend}>
+                                            <XAxis dataKey="academic_year" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                            <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} barSize={40} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                        </div>
+
+                        <div className="grid-3" style={{ marginBottom: '32px' }}>
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h4 style={{ color: 'var(--text-muted)', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Teacher Load Index</h4>
+                                <div style={{ fontSize: '2rem', fontWeight: 900 }}>1:18</div>
+                                <div style={{ color: '#10B981', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <ArrowUpRight size={14} /> Within Optimal Range
+                                </div>
+                                <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Average ratio across primary and secondary departments.</p>
+                            </Card>
+                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
+                                <h4 style={{ color: 'var(--text-muted)', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>System Health</h4>
+                                <div style={{ fontSize: '2rem', fontWeight: 900 }}>99.9%</div>
+                                <div style={{ color: '#10B981', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <ShieldCheck size={14} /> High Integrity
+                                </div>
+                                <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Zero critical server latency events detected in the last 72 hours.</p>
+                            </Card>
+                            <Card style={{ padding: '32px', borderRadius: '24px', background: 'var(--primary)', color: 'white' }}>
+                                <h4 style={{ color: 'white', opacity: 0.8, margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Upcoming Audit</h4>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>May 15, 2026</div>
+                                <div style={{ marginTop: '16px', fontSize: '0.85rem' }}>Financial compliance review scheduled with the Academic Board.</div>
+                                <Button style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', width: '100%', marginTop: '20px' }}>
+                                    View Schedule
+                                </Button>
+                            </Card>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Floating Action for Quick Access */}
+            <div style={{ position: 'fixed', bottom: '32px', right: '32px', zIndex: 100 }}>
+                <Button 
+                    onClick={() => setActiveModal('faculty')}
+                    style={{ 
+                        width: '64px', 
+                        height: '64px', 
+                        borderRadius: '20px', 
+                        padding: 0,
+                        boxShadow: '0 10px 25px rgba(99, 102, 241, 0.4)',
+                        fontSize: '1.5rem'
+                    }}
+                >
+                    <Plus size={28} />
+                </Button>
             </div>
 
-            {/* Quick Action Modals */}
+            {/* Modal for adding faculty */}
             <Modal
                 isOpen={activeModal === 'faculty'}
                 onClose={() => setActiveModal(null)}
-                title="Register Faculty"
+                title="Strategic Onboarding"
                 width="500px"
             >
-                <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9375rem' }}>Add a new teacher or administrative staff member to the system.</p>
-                <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} onSubmit={handleFacultySubmit}>
+                <form onSubmit={handleFacultySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <FormField
-                        label="FULL NAME"
-                        placeholder="e.g. Dr. Jane Smith"
+                        label="FULL LEGAL NAME"
+                        placeholder="Dr. Julian Vane"
                         required
                         value={facultyForm.name}
                         onChange={e => setFacultyForm({ ...facultyForm, name: e.target.value })}
                     />
                     <FormField
-                        label="EMAIL ADDRESS"
+                        label="INSTITUTIONAL EMAIL"
                         type="email"
-                        placeholder="jane.smith@edugate.com"
+                        placeholder="j.vane@edugate.com"
                         required
                         value={facultyForm.email}
                         onChange={e => setFacultyForm({ ...facultyForm, email: e.target.value })}
                     />
                     <SelectField
-                        label="ROLE"
+                        label="ASSIGNED ROLE"
                         value={facultyForm.role}
                         onChange={e => setFacultyForm({ ...facultyForm, role: e.target.value })}
                     >
-                        <option value="teacher">Teacher</option>
-                        <option value="admin">Administrator</option>
+                        <option value="teacher">Faculty Member</option>
+                        <option value="admin">System Administrator</option>
                     </SelectField>
                     <Button type="submit" style={{ marginTop: '12px' }} disabled={isSubmitting}>
-                        {isSubmitting ? 'Registering...' : 'Complete Onboarding'}
-                    </Button>
-                </form>
-            </Modal>
-
-            <Modal
-                isOpen={activeModal === 'announcement'}
-                onClose={() => setActiveModal(null)}
-                title="Broadcast Announcement"
-                width="500px"
-            >
-                <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9375rem' }}>Send an immediate notification to students, staff, or parents.</p>
-                <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} onSubmit={handleAnnouncementSubmit}>
-                    <FormField
-                        label="SUBJECT"
-                        placeholder="e.g. Emergency Closure"
-                        required
-                        value={announcementForm.title}
-                        onChange={e => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
-                    />
-                    <SelectField
-                        label="TARGET AUDIENCE"
-                        value={announcementForm.target_role}
-                        onChange={e => setAnnouncementForm({ ...announcementForm, target_role: e.target.value })}
-                    >
-                        <option value="all">Everyone</option>
-                        <option value="teacher">Teachers Only</option>
-                        <option value="student">Students & Parents</option>
-                    </SelectField>
-                    <TextareaField
-                        label="MESSAGE"
-                        rows={5}
-                        placeholder="Type your message here..."
-                        required
-                        value={announcementForm.message}
-                        onChange={e => setAnnouncementForm({ ...announcementForm, message: e.target.value })}
-                    />
-                    <Button type="submit" style={{ marginTop: '12px' }} disabled={isSubmitting}>
-                        {isSubmitting ? 'Sending...' : 'Send Broadcast'}
+                        {isSubmitting ? 'Processing...' : 'Authorize Onboarding'}
                     </Button>
                 </form>
             </Modal>
