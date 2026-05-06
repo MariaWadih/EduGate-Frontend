@@ -133,7 +133,7 @@ const StudentHomework = () => {
                         const submission = hw.submissions && hw.submissions[0];
                         const isSubmitted = !!submission;
                         const isGraded = submission?.status === 'graded';
-                        const isOverdue = new Date(hw.due_date) < new Date() && !isSubmitted;
+                        const isOverdue = new Date(hw.due_date) < new Date();
 
                         return (
                             <motion.div key={hw.id} variants={itemVariants} whileHover={{ y: -5 }}>
@@ -210,27 +210,33 @@ const StudentHomework = () => {
                                             </div>
                                         </div>
 
-                                        {isGraded ? (
-                                            <div style={{ textAlign: 'right' }}>
-                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Result</div>
-                                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669' }}>
-                                                    {Math.round(submission.score)} <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>/ 100</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <Button
-                                                onClick={() => {
-                                                    setSelectedHw(hw);
-                                                    setIsSubmissionModalOpen(true);
-                                                    setContent(submission?.content || '');
-                                                }}
-                                                variant={isSubmitted ? 'outline' : 'primary'}
-                                                style={{ borderRadius: '10px', padding: '10px 20px' }}
-                                            >
-                                                {isSubmitted ? 'Update' : 'Submit'}
-                                                <Upload size={14} style={{ marginLeft: '8px' }} />
-                                            </Button>
-                                        )}
+                                        {isGraded || isOverdue ? (
+    isOverdue && !isGraded ? (
+        <Badge bg="#FEE2E2" color="#E11D48" style={{ fontWeight: 800, padding: '8px 16px' }}>
+            Deadline Passed
+        </Badge>
+    ) : (
+        <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Result</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669' }}>
+                {Math.round(submission.score)} <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>/ 100</span>
+            </div>
+        </div>
+    )
+) : (
+    <Button
+        onClick={() => {
+            setSelectedHw(hw);
+            setIsSubmissionModalOpen(true);
+            setContent(submission?.content || '');
+        }}
+        variant={isSubmitted ? 'outline' : 'primary'}
+        style={{ borderRadius: '10px', padding: '10px 20px' }}
+    >
+        {isSubmitted ? 'Update' : 'Submit'}
+        <Upload size={14} style={{ marginLeft: '8px' }} />
+    </Button>
+)}
                                     </div>
                                 </Card>
                             </motion.div>
