@@ -1,692 +1,822 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import client from '../../api/client';
 import {
-    Users, TrendingUp, AlertTriangle, CreditCard,
-    ChevronRight, MessageSquare, Bell, Calendar, GraduationCap, Plus,
-    Award, Target, Activity, ArrowUpRight, ArrowDownRight,
-    Search, Filter, Zap, BarChart3, PieChart,
-    ShieldCheck, Globe
+    Users, TrendingUp, AlertTriangle, ChevronRight,
+    Bell, GraduationCap, Plus, Award, Target, Activity,
+    ArrowUpRight, Zap, BarChart3, ShieldCheck, Globe,
+    BookOpen, Filter, X, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, Cell, AreaChart, Area, PieChart as RePieChart, Pie
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, BarChart, Bar, Cell, AreaChart,
+    Area, PieChart as RePieChart, Pie, Legend
 } from 'recharts';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
-import { Modal, FormField, SelectField, TextareaField } from '../../components/molecules';
+import { Modal, FormField, SelectField } from '../../components/molecules';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 
+/* ─── palette ────────────────────────────────────────────────────────── */
+const PALETTE = ['#7C3AED', '#0EA5E9', '#10B981', '#F59E0B', '#EC4899', '#6366F1'];
+const SEV_COLOR = { high: '#EF4444', medium: '#F59E0B', low: '#10B981' };
+
+/* ─── tiny helpers ───────────────────────────────────────────────────── */
+const pct = (v) => v === null || v === undefined ? 'N/A' : `${v}%`;
+const num  = (v) => (v ?? 0).toLocaleString();
+
+const Pill = ({ color, children, style = {} }) => (
+    <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '2px 10px', borderRadius: 999, fontSize: '0.7rem',
+        fontWeight: 800, letterSpacing: '0.04em',
+        background: color + '20', color, ...style,
+    }}>{children}</span>
+);
+
+const StatCard = ({ label, value, sub, icon, accent, delay = 0 }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay }}
+        style={{
+            background: 'white',
+            borderRadius: 20,
+            padding: '28px 24px',
+            border: '1px solid #F1F0FF',
+            boxShadow: '0 2px 12px rgba(124,58,237,0.06)',
+            position: 'relative',
+            overflow: 'hidden',
+        }}
+    >
+        {/* accent bar */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent }} />
+        <div style={{
+            width: 44, height: 44, borderRadius: 14, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            background: accent + '15', color: accent, marginBottom: 16,
+        }}>
+            {icon}
+        </div>
+        <div style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: '#1a1230' }}>
+            {value}
+        </div>
+        <div style={{ marginTop: 6, fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9B8FC0' }}>
+            {label}
+        </div>
+        {sub && (
+            <div style={{ marginTop: 4, fontSize: '0.75rem', color: accent, fontWeight: 700 }}>{sub}</div>
+        )}
+    </motion.div>
+);
+
+/* ─── custom tooltip ─────────────────────────────────────────────────── */
+const ChartTip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: '#1a1230', color: 'white', borderRadius: 12,
+            padding: '10px 16px', fontSize: '0.8rem', boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+        }}>
+            <div style={{ fontWeight: 700, marginBottom: 4, opacity: 0.6 }}>{label}</div>
+            {payload.map((p, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
+                    <span style={{ fontWeight: 800 }}>{typeof p.value === 'number' ? p.value.toFixed(1) : p.value}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════════════ */
 const AdminDashboard = () => {
     const { activeYear } = useAcademicYear();
-    const [data, setData] = useState(null);
+    const [data,    setData]    = useState(null);
     const [loading, setLoading] = useState(true);
+    const [refresh, setRefresh] = useState(0);
     const navigate = useNavigate();
-    const [activeModal, setActiveModal] = useState(null);
-    const [activeTab, setActiveTab] = useState('overview');
 
-    // Form states
-    const [facultyForm, setFacultyForm] = useState({ name: '', email: '', role: 'teacher' });
-    const [announcementForm, setAnnouncementForm] = useState({ title: '', message: '', target_role: 'all' });
+    const [activeModal, setActiveModal] = useState(null);
+    const [activeTab,   setActiveTab]   = useState('overview');
+
+    // Filters — classId is an integer (real FK), segment is a string
+    const [filters, setFilters] = useState({ classId: '', segment: 'All Students' });
+    const [classOptions,   setClassOptions]   = useState([]);
+    const [segmentOptions, setSegmentOptions] = useState(['All Students', 'High Performers', 'At Risk', 'New Enrollees']);
+
+    const [facultyForm,  setFacultyForm]  = useState({ name: '', email: '', role: 'teacher' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Filter states
-    const [filters, setFilters] = useState({
-        term: 'All Terms',
-        grade: 'All Grades',
-        segment: 'All Students'
-    });
-
-    const fetchData = () => {
+    /* ── fetch ───────────────────────────────────────────────────────── */
+    const fetchData = useCallback(() => {
         setLoading(true);
         const params = {
             ...(activeYear?.id ? { academic_year_id: activeYear.id } : {}),
-            term: filters.term !== 'All Terms' ? filters.term : undefined,
-            grade: filters.grade !== 'All Grades' ? filters.grade : undefined,
-            segment: filters.segment !== 'All Students' ? filters.segment : undefined
+            ...(filters.classId   ? { class_id: filters.classId }   : {}),
+            ...(filters.segment !== 'All Students' ? { segment: filters.segment } : {}),
         };
         client.get('/analytics/admin/overview', { params })
             .then(res => {
                 setData(res.data);
-                setLoading(false);
+                // populate dropdowns from real API response
+                if (res.data.filter_options?.classes) {
+                    setClassOptions(res.data.filter_options.classes);
+                }
+                if (res.data.filter_options?.segments) {
+                    setSegmentOptions(res.data.filter_options.segments);
+                }
             })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
+    }, [activeYear, filters, refresh]);
 
-    useEffect(() => {
-        fetchData();
-    }, [activeYear, filters]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
+    /* ── submit faculty ──────────────────────────────────────────────── */
     const handleFacultySubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         client.post('/users/register', { ...facultyForm, password: 'password' })
-            .then(() => {
-                setFacultyForm({ name: '', email: '', role: 'teacher' });
-                setActiveModal(null);
-                fetchData();
-            })
+            .then(() => { setFacultyForm({ name: '', email: '', role: 'teacher' }); setActiveModal(null); setRefresh(r => r + 1); })
             .catch(err => console.error(err))
             .finally(() => setIsSubmitting(false));
     };
 
+    /* ── loading ─────────────────────────────────────────────────────── */
     if (loading && !data) return (
-        <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
-            <motion.div 
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} 
-                transition={{ duration: 2, repeat: Infinity }}
-            >
-                <Zap size={64} color="var(--primary)" fill="var(--primary-light)" />
-            </motion.div>
+        <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#F7F5FF' }}>
+            <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+                style={{ width: 48, height: 48, borderRadius: '50%', border: '4px solid #E9D5FF', borderTopColor: '#7C3AED' }}
+            />
+            <p style={{ color: '#9B8FC0', fontWeight: 600, fontSize: '0.9rem' }}>Loading intelligence data…</p>
         </div>
     );
 
-    if (!data) return <div>Critical error loading business intelligence data.</div>;
+    if (!data) return (
+        <div style={{ padding: 40, color: '#EF4444', fontWeight: 600 }}>
+            Failed to load dashboard data. Please refresh.
+        </div>
+    );
 
-    const { metrics, feedback, rankings, charts, insights } = data;
+    const { metrics, rankings, charts, insights, operations } = data;
+    const hasFilters = filters.classId || filters.segment !== 'All Students';
 
-    const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'];
+    /* ── active class label ──────────────────────────────────────────── */
+    const activeClassLabel = filters.classId
+        ? classOptions.find(c => String(c.id) === String(filters.classId))?.label ?? 'Class'
+        : null;
 
+    /* ══════════════════════════════════════════════════════════════════
+       RENDER
+    ══════════════════════════════════════════════════════════════════ */
     return (
-        <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            style={{ padding: '20px 0', maxWidth: '1600px', margin: '0 auto' }}
-        >
-            {/* Top Navigation & Brand */}
-            <header style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                marginBottom: '32px' 
-            }}>
+        <div style={{ padding: '24px 0', maxWidth: 1520, margin: '0 auto', background: '#F7F5FF', minHeight: '100vh' }}>
+
+            {/* ── HEADER ────────────────────────────────────────────────── */}
+            <motion.header
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, padding: '0 2px' }}
+            >
                 <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
-                        Command Center
-                        <span style={{ color: 'var(--primary)', marginLeft: '8px' }}>.</span>
-                    </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: '4px 0 0 0' }}>
-                        Strategic intelligence for EduGate Institution
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                        <div style={{ width: 8, height: 32, borderRadius: 4, background: 'linear-gradient(180deg, #7C3AED, #0EA5E9)' }} />
+                        <h1 style={{ fontSize: '1.9rem', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: '#1a1230' }}>
+                            Command Center
+                        </h1>
+                    </div>
+                    <p style={{ color: '#9B8FC0', fontSize: '0.9rem', margin: '0 0 0 18px', fontWeight: 500 }}>
+                        {activeYear?.name ? `Academic Year ${activeYear.name}` : 'All Academic Years'}
+                        {activeClassLabel && ` · ${activeClassLabel}`}
+                        {filters.segment !== 'All Students' && ` · ${filters.segment}`}
                     </p>
                 </div>
-            </header>
-
-            {/* Strategic Filter Bar */}
-            <Card style={{ 
-                padding: '12px 24px', 
-                borderRadius: '16px', 
-                marginBottom: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '24px',
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid var(--border-color)',
-                boxShadow: 'var(--shadow-sm)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                    <Filter size={14} />
-                    GLOBAL FILTERS:
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    {loading && (
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            style={{ color: '#7C3AED' }}
+                        >
+                            <RefreshCw size={16} />
+                        </motion.div>
+                    )}
+                    <button
+                        onClick={() => setRefresh(r => r + 1)}
+                        style={{ background: 'white', border: '1px solid #E9D5FF', borderRadius: 12, padding: '8px 16px', color: '#7C3AED', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        <RefreshCw size={14} /> Refresh
+                    </button>
+                    <button
+                        onClick={() => setActiveModal('faculty')}
+                        style={{ background: 'linear-gradient(135deg, #7C3AED, #6366F1)', border: 'none', borderRadius: 12, padding: '10px 20px', color: 'white', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(124,58,237,0.35)' }}
+                    >
+                        <Plus size={16} /> Add Member
+                    </button>
                 </div>
-                
-                <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
-                    <div style={{ width: '180px' }}>
-                        <SelectField
-                            value={filters.term}
-                            onChange={(e) => setFilters({ ...filters, term: e.target.value })}
-                            style={{ margin: 0, padding: '8px 12px', fontSize: '0.875rem' }}
-                        >
-                            <option>All Terms</option>
-                            <option>Mid Term</option>
-                            <option>Final Term</option>
-                        </SelectField>
-                    </div>
-                    
-                    <div style={{ width: '180px' }}>
-                        <SelectField
-                            value={filters.grade}
-                            onChange={(e) => setFilters({ ...filters, grade: e.target.value })}
-                            style={{ margin: 0, padding: '8px 12px', fontSize: '0.875rem' }}
-                        >
-                            <option>All Grades</option>
-                            <option>Grade 9</option>
-                            <option>Grade 10</option>
-                            <option>Grade 11</option>
-                            <option>Grade 12</option>
-                        </SelectField>
-                    </div>
+            </motion.header>
 
-                    <div style={{ width: '180px' }}>
-                        <SelectField
-                            value={filters.segment}
-                            onChange={(e) => setFilters({ ...filters, segment: e.target.value })}
-                            style={{ margin: 0, padding: '8px 12px', fontSize: '0.875rem' }}
-                        >
-                            <option>All Students</option>
-                            <option>High Performers</option>
-                            <option>At Risk</option>
-                            <option>New Enrollees</option>
-                        </SelectField>
-                    </div>
+            {/* ── FILTER BAR ────────────────────────────────────────────── */}
+            <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 }}
+                style={{
+                    background: 'white',
+                    borderRadius: 18,
+                    padding: '14px 20px',
+                    marginBottom: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    flexWrap: 'wrap',
+                    border: '1px solid #EDE9FF',
+                    boxShadow: '0 2px 8px rgba(124,58,237,0.05)',
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7C3AED', fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
+                    <Filter size={13} /> FILTERS
                 </div>
 
-                <Button 
-                    variant="outline" 
-                    onClick={() => setFilters({ term: 'All Terms', grade: 'All Grades', segment: 'All Students' })}
-                    style={{ padding: '8px 16px', fontSize: '0.8rem', borderRadius: '10px' }}
-                >
-                    Clear Filters
-                </Button>
-            </Card>
+                {/* Class filter — dynamically populated from API */}
+                <FilterSelect
+                    value={filters.classId}
+                    onChange={v => setFilters(f => ({ ...f, classId: v }))}
+                    placeholder="All Classes"
+                    options={classOptions.map(c => ({ value: c.id, label: c.label }))}
+                />
 
-            {/* Strategic Tabs */}
-            <div style={{ 
-                display: 'flex', 
-                gap: '24px', 
-                marginBottom: '32px', 
-                borderBottom: '1px solid var(--border-color)',
-                paddingBottom: '2px'
-            }}>
+                {/* Segment filter */}
+                <FilterSelect
+                    value={filters.segment}
+                    onChange={v => setFilters(f => ({ ...f, segment: v }))}
+                    placeholder="All Students"
+                    options={segmentOptions.map(s => ({ value: s, label: s }))}
+                />
+
+                {/* Active filter chips */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                    {activeClassLabel && (
+                        <FilterChip label={activeClassLabel} onRemove={() => setFilters(f => ({ ...f, classId: '' }))} />
+                    )}
+                    {filters.segment !== 'All Students' && (
+                        <FilterChip label={filters.segment} onRemove={() => setFilters(f => ({ ...f, segment: 'All Students' }))} />
+                    )}
+                </div>
+
+                {hasFilters && (
+                    <button
+                        onClick={() => setFilters({ classId: '', segment: 'All Students' })}
+                        style={{ background: 'none', border: 'none', color: '#9B8FC0', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, transition: 'color 0.15s' }}
+                    >
+                        <X size={12} /> Clear all
+                    </button>
+                )}
+            </motion.div>
+
+            {/* ── TABS ──────────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'white', borderRadius: 14, padding: 6, width: 'fit-content', border: '1px solid #EDE9FF' }}>
                 {[
-                    { id: 'overview', label: 'Executive Overview', icon: <Globe size={18} /> },
-                    { id: 'academic', label: 'Academic Performance', icon: <BarChart3 size={18} /> },
-                    { id: 'operations', label: 'Operational Metrics', icon: <Zap size={18} /> }
+                    { id: 'overview',    label: 'Overview',    icon: <Globe size={15} /> },
+                    { id: 'academic',    label: 'Academic',    icon: <BarChart3 size={15} /> },
+                    { id: 'operations', label: 'Operations',   icon: <Zap size={15} /> },
                 ].map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '12px 16px',
-                            background: 'none',
-                            border: 'none',
-                            borderBottom: activeTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',
-                            color: activeTab === tab.id ? 'var(--text-main)' : 'var(--text-muted)',
-                            fontWeight: activeTab === tab.id ? 700 : 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
+                            display: 'flex', alignItems: 'center', gap: 7,
+                            padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                            fontWeight: 700, fontSize: '0.82rem', transition: 'all 0.2s',
+                            background: activeTab === tab.id ? 'linear-gradient(135deg, #7C3AED, #6366F1)' : 'transparent',
+                            color:      activeTab === tab.id ? 'white' : '#9B8FC0',
+                            boxShadow:  activeTab === tab.id ? '0 4px 12px rgba(124,58,237,0.3)' : 'none',
                         }}
                     >
-                        {tab.icon}
-                        {tab.label}
+                        {tab.icon} {tab.label}
                     </button>
                 ))}
             </div>
 
-            {/* Main Content Area */}
+            {/* ── TAB CONTENT ───────────────────────────────────────────── */}
             <AnimatePresence mode="wait">
+
+                {/* ══ OVERVIEW ══════════════════════════════════════════ */}
                 {activeTab === 'overview' && (
-                    <motion.div
-                        key="overview"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                    >
-                        {/* Summary Banner */}
-                        <div style={{ 
-                            background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
-                            borderRadius: '24px',
-                            padding: '40px',
-                            color: 'white',
-                            marginBottom: '32px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            boxShadow: '0 20px 40px rgba(49, 46, 129, 0.15)'
+                    <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+
+                        {/* Hero banner */}
+                        <div style={{
+                            background: 'linear-gradient(135deg, #1a1230 0%, #2D1B69 50%, #1e3a5f 100%)',
+                            borderRadius: 28, padding: '44px 48px', color: 'white',
+                            marginBottom: 28, position: 'relative', overflow: 'hidden',
                         }}>
+                            {/* decorative blobs */}
+                            <div style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, background: 'radial-gradient(circle, rgba(124,58,237,0.25) 0%, transparent 70%)', borderRadius: '50%' }} />
+                            <div style={{ position: 'absolute', bottom: -80, left: '15%', width: 340, height: 340, background: 'radial-gradient(circle, rgba(14,165,233,0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
+                            <div style={{ position: 'absolute', top: '20%', right: '20%', width: 160, height: 160, background: 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)', borderRadius: '50%' }} />
+
                             <div style={{ position: 'relative', zIndex: 2 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                                    <Badge style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '4px 12px' }}>
-                                        <ShieldCheck size={12} style={{ marginRight: '6px' }} />
-                                        SYSTEM STABLE
-                                    </Badge>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                                    <Pill color="#10B981" style={{ background: 'rgba(16,185,129,0.15)', color: '#4ADE80' }}>
+                                        <ShieldCheck size={10} /> SYSTEM STABLE
+                                    </Pill>
+                                    <Pill color="#A78BFA" style={{ background: 'rgba(167,139,250,0.15)', color: '#A78BFA' }}>
+                                        {operations.active_year_name}
+                                    </Pill>
                                 </div>
-                                <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '16px', letterSpacing: '-0.03em' }}>
-                                    Strategic Growth Index: <span style={{ color: '#818cf8' }}>+12.4%</span>
-                                </h2>
-                                <p style={{ fontSize: '1.1rem', opacity: 0.8, maxWidth: '700px', lineHeight: 1.6 }}>
-                                    EduGate is currently servicing <span style={{ fontWeight: 700 }}>{metrics.total_students} students</span> across 
-                                    {metrics.total_classes} active sections. System efficiency has increased by 4% since the last quarter.
-                                </p>
-                            </div>
-                            {/* Abstract background shapes */}
-                            <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)', borderRadius: '50%' }} />
-                            <div style={{ position: 'absolute', bottom: '-100px', left: '10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
-                        </div>
 
-                        {/* High-Level Metrics */}
-                        <div className="grid-4" style={{ marginBottom: '32px' }}>
-                            {[
-                                { label: 'Attendance Velocity', value: `${metrics.attendance_rate}%`, trend: '+1.2%', icon: <Activity />, color: '#10B981' },
-                                { label: 'Teacher Capacity', value: metrics.total_teachers, trend: 'Optimal', icon: <Users />, color: '#6366F1' },
-                                { label: 'Student Retention', value: '98.2%', trend: '+0.4%', icon: <GraduationCap />, color: '#F59E0B' },
-                                { label: 'Academic Proficiency', value: `${metrics.proficiency_rate}%`, trend: 'Target: 85%', icon: <Target />, color: '#EC4899' }
-                            ].map((stat, i) => (
-                                <Card key={i} style={{ 
-                                    padding: '24px', 
-                                    borderRadius: '20px', 
-                                    border: '1px solid var(--border-color)',
-                                    background: 'white',
-                                    boxShadow: 'var(--shadow-sm)'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                        <div style={{ color: stat.color, background: `${stat.color}10`, padding: '12px', borderRadius: '14px' }}>
-                                            {stat.icon}
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: stat.color }}>{stat.trend}</div>
-                                    </div>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '4px' }}>{stat.value}</div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{stat.label}</div>
-                                </Card>
-                            ))}
-                        </div>
-
-                        {/* Charts Section */}
-                        <div className="grid-2-1" style={{ marginBottom: '32px' }}>
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Institutional Performance Trend</h3>
-                                        <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Aggregate student score variance by term</p>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, opacity: 0.5, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
+                                            Strategic Growth Index
+                                        </div>
+                                        <div style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em' }}>
+{metrics.growth_index === null ? (
+    <span style={{ color: '#9B8FC0', fontSize: '2.5rem' }}>N/A</span>
+) : (
+    <span style={{ color: metrics.growth_index >= 0 ? '#4ADE80' : '#F87171' }}>
+        {metrics.growth_index > 0 ? '+' : ''}{metrics.growth_index}%
+    </span>
+)}
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <Badge style={{ background: '#EEF2FF', color: '#6366F1', border: 'none' }}>2024-2025</Badge>
+                                    <div style={{ paddingBottom: 8, opacity: 0.7, fontSize: '0.95rem', maxWidth: 520, lineHeight: 1.7 }}>
+                                        Serving <strong style={{ color: 'white', opacity: 1 }}>{num(metrics.total_students)} students</strong> across{' '}
+                                        <strong style={{ color: 'white', opacity: 1 }}>{metrics.total_classes} sections</strong> taught by{' '}
+                                        <strong style={{ color: 'white', opacity: 1 }}>{metrics.total_teachers} faculty</strong>.
                                     </div>
                                 </div>
-                                <div style={{ height: '350px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={charts.performance_trend}>
-                                            <defs>
-                                                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.1}/>
-                                                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} dy={10} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
-                                            <Tooltip 
-                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
-                                                itemStyle={{ fontWeight: 700 }}
-                                            />
-                                            <Area 
-                                                type="monotone" 
-                                                dataKey="avg_score" 
-                                                stroke="#6366F1" 
-                                                strokeWidth={4} 
-                                                fillOpacity={1} 
-                                                fill="url(#colorScore)" 
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
 
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Capacity Utilization</h3>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Student distribution across top sections</p>
-                                <div style={{ height: '350px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={charts.students_by_class} layout="vertical" margin={{ left: -20 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="class_name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} width={100} />
-                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                                            <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={24}>
-                                                {charts.students_by_class.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Strategic Insight Section */}
-                        <div className="grid-3" style={{ marginBottom: '32px' }}>
-                            {/* Insight Column */}
-                            <Card style={{ padding: '32px', borderRadius: '24px', background: 'var(--text-main)', color: 'white' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                                    <Zap size={24} color="#F59E0B" />
-                                    <h3 style={{ margin: 0, color: 'white' }}>Strategic Insights</h3>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                    {insights.map((insight, i) => (
-                                        <div key={i} style={{ 
-                                            padding: '16px', 
-                                            background: 'rgba(255,255,255,0.05)', 
-                                            borderRadius: '16px',
-                                            border: '1px solid rgba(255,255,255,0.1)'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                <Badge style={{ 
-                                                    fontSize: '0.65rem', 
-                                                    background: insight.severity === 'high' ? '#EF4444' : '#F59E0B',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    fontWeight: 900
-                                                }}>
-                                                    {insight.severity.toUpperCase()}
-                                                </Badge>
-                                                <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>{new Date(insight.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                            <div style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{insight.message}</div>
+                                {/* mini stats row */}
+                                <div style={{ display: 'flex', gap: 32, marginTop: 32, flexWrap: 'wrap' }}>
+                                    {[
+                                        { label: 'Attendance', value: pct(metrics.attendance_rate) },
+                                        { label: 'Proficiency', value: pct(metrics.proficiency_rate) },
+                                        { label: 'Retention', value: pct(metrics.retention_rate) },
+                                        { label: 'Subjects', value: num(metrics.total_subjects) },
+                                    ].map((m, i) => (
+                                        <div key={i}>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>{m.value}</div>
+                                            <div style={{ fontSize: '0.72rem', fontWeight: 700, opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</div>
                                         </div>
                                     ))}
                                 </div>
-                            </Card>
+                            </div>
+                        </div>
 
-                            {/* Top Talent */}
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                                    <Award size={24} color="var(--primary)" />
-                                    <h3 style={{ margin: 0 }}>Top Scholars</h3>
+                        {/* Stat cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
+                            <StatCard label="Attendance Rate"   value={pct(metrics.attendance_rate)}  sub="Global average"                   icon={<Activity size={20} />}     accent={PALETTE[2]} delay={0} />
+                            <StatCard label="Proficiency Rate"  value={pct(metrics.proficiency_rate)} sub="Students scoring ≥75%"             icon={<Target size={20} />}       accent={PALETTE[0]} delay={0.05} />
+                            <StatCard
+    label="Student Retention"
+    value={pct(metrics.retention_rate)}
+    sub={metrics.retention_rate === null ? 'No prior year to compare' : 'vs previous year'}
+    icon={<GraduationCap size={20} />}
+    accent={PALETTE[1]}
+    delay={0.1}
+/>
+                            <StatCard label="Faculty Members"   value={num(metrics.total_teachers)}   sub={`Ratio: ${operations.teacher_student_ratio}`} icon={<Users size={20} />}  accent={PALETTE[4]} delay={0.15} />
+                        </div>
+
+                        {/* Charts row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
+
+                            {/* Performance trend */}
+                            <SectionCard title="Performance Trend" sub="Average score by term across all grades">
+                                {charts.performance_trend?.length > 0 ? (
+                                    <div style={{ height: 300 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={charts.performance_trend} margin={{ left: -10 }}>
+                                                <defs>
+                                                    <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%"  stopColor="#7C3AED" stopOpacity={0.15} />
+                                                        <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F0FF" />
+                                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#B0A8CC', fontWeight: 600 }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#B0A8CC' }} domain={[0, 100]} />
+                                                <Tooltip content={<ChartTip />} />
+                                                <Area type="monotone" dataKey="avg_score" stroke="#7C3AED" strokeWidth={3} fillOpacity={1} fill="url(#grad1)" dot={{ r: 5, fill: '#7C3AED', stroke: 'white', strokeWidth: 2 }} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : <EmptyChart message="No grade data available for this selection." />}
+                            </SectionCard>
+
+                            {/* Capacity utilization */}
+                            <SectionCard title="Class Enrollment" sub="Students per section">
+                                {charts.students_by_class?.length > 0 ? (
+                                    <div style={{ height: 300 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={charts.students_by_class} layout="vertical" margin={{ left: -10 }}>
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="class_name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#6B5B9A' }} width={90} />
+                                                <Tooltip content={<ChartTip />} cursor={{ fill: 'rgba(124,58,237,0.04)' }} />
+                                                <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={20}>
+                                                    {charts.students_by_class.map((_, i) => (
+                                                        <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : <EmptyChart message="No class data found." />}
+                            </SectionCard>
+                        </div>
+
+                        {/* Bottom row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+
+                            {/* Strategic Insights */}
+                            <SectionCard title="Strategic Insights" titleIcon={<Zap size={16} color="#F59E0B" />} dark>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {insights?.length > 0 ? insights.map((ins, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, x: -8 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.06 }}
+                                            style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.07)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.08)' }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                                <Pill color={SEV_COLOR[ins.severity]} style={{ background: SEV_COLOR[ins.severity] + '25', color: SEV_COLOR[ins.severity] }}>
+                                                    {ins.severity?.toUpperCase()}
+                                                </Pill>
+                                                <span style={{ fontSize: '0.68rem', opacity: 0.4 }}>
+                                                    {new Date(ins.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.55, opacity: 0.85 }}>{ins.message}</p>
+                                        </motion.div>
+                                    )) : (
+                                        <div style={{ textAlign: 'center', padding: '32px 0', opacity: 0.35, fontSize: '0.85rem' }}>
+                                            No insights yet.
+                                        </div>
+                                    )}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                    {rankings.best_students.map((student, i) => (
-                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                            <div style={{ position: 'relative' }}>
-                                                <Avatar name={student.name} size={44} style={{ borderRadius: '12px' }} />
-                                                <div style={{ 
-                                                    position: 'absolute', 
-                                                    top: '-6px', 
-                                                    right: '-6px', 
-                                                    background: 'var(--primary)', 
-                                                    color: 'white', 
-                                                    fontSize: '0.65rem',
-                                                    width: '18px',
-                                                    height: '18px',
-                                                    borderRadius: '50%',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    fontWeight: 900
+                            </SectionCard>
+
+                            {/* Top Scholars */}
+                            <SectionCard title="Top Scholars" titleIcon={<Award size={16} color={PALETTE[0]} />}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    {rankings?.best_students?.length > 0 ? rankings.best_students.map((s, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                                                <Avatar name={s.name} size={40} style={{ borderRadius: 12 }} />
+                                                <div style={{
+                                                    position: 'absolute', top: -5, right: -5,
+                                                    background: i === 0 ? '#F59E0B' : i === 1 ? '#9CA3AF' : '#CD7C2F',
+                                                    color: 'white', fontSize: '0.6rem', width: 16, height: 16,
+                                                    borderRadius: '50%', display: 'flex', alignItems: 'center',
+                                                    justifyContent: 'center', fontWeight: 900,
                                                 }}>
                                                     {i + 1}
                                                 </div>
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{student.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.class}</div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1a1230', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                                                <div style={{ fontSize: '0.72rem', color: '#9B8FC0', marginTop: 2 }}>{s.class}</div>
                                             </div>
-                                            <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.25rem' }}>{student.gpa}</div>
+                                            <div style={{ fontWeight: 900, color: PALETTE[0], fontSize: '1.1rem', flexShrink: 0 }}>
+                                                {s.gpa}
+                                            </div>
                                         </div>
-                                    ))}
+                                    )) : <EmptyChart message="No student data found." />}
                                 </div>
-                            </Card>
+                            </SectionCard>
 
-                            {/* Operational Efficiency */}
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                                    <Activity size={24} color="#10B981" />
-                                    <h3 style={{ margin: 0 }}>Class Efficiency</h3>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                    {rankings.top_classes.map((cls, i) => (
+                            {/* Class Efficiency */}
+                            <SectionCard title="Class Efficiency" titleIcon={<Activity size={16} color={PALETTE[2]} />}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                                    {rankings?.top_classes?.length > 0 ? rankings.top_classes.map((cls, i) => (
                                         <div key={i}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{cls.name}</span>
-                                                <span style={{ fontWeight: 900, color: '#10B981' }}>{Math.round(cls.avg_score)}%</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                                                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1a1230' }}>{cls.name}</span>
+                                                <span style={{ fontWeight: 900, color: PALETTE[i % PALETTE.length], fontSize: '0.9rem' }}>{cls.avg_score}%</span>
                                             </div>
-                                            <div style={{ height: '8px', background: '#F3F4F6', borderRadius: '4px', overflow: 'hidden' }}>
-                                                <motion.div 
+                                            <div style={{ height: 7, background: '#F1F0FF', borderRadius: 4, overflow: 'hidden' }}>
+                                                <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${cls.avg_score}%` }}
-                                                    transition={{ duration: 1, delay: i * 0.1 }}
-                                                    style={{ height: '100%', background: COLORS[i % COLORS.length] }} 
+                                                    transition={{ duration: 1, delay: i * 0.1, ease: 'easeOut' }}
+                                                    style={{ height: '100%', background: PALETTE[i % PALETTE.length], borderRadius: 4 }}
                                                 />
                                             </div>
                                         </div>
-                                    ))}
+                                    )) : <EmptyChart message="No class data found." />}
                                 </div>
-                                <Button variant="outline" style={{ width: '100%', marginTop: '32px', borderRadius: '12px' }} onClick={() => navigate('/academy')}>
-                                    Full Academic Audit
-                                </Button>
-                            </Card>
+                                <button
+                                    onClick={() => navigate('/academy')}
+                                    style={{ width: '100%', marginTop: 24, padding: '10px', borderRadius: 12, border: '1.5px solid #EDE9FF', background: 'transparent', color: '#7C3AED', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                                >
+                                    Full Academic Audit →
+                                </button>
+                            </SectionCard>
                         </div>
                     </motion.div>
                 )}
-                
+
+                {/* ══ ACADEMIC ══════════════════════════════════════════ */}
                 {activeTab === 'academic' && (
-                    <motion.div
-                        key="academic"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                    >
-                        <div className="grid-2-1" style={{ marginBottom: '32px' }}>
-                            {/* Subject Performance */}
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Subject Proficiency Matrix</h3>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Comparative analysis of average scores by department</p>
-                                <div style={{ height: '350px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={[
-                                            { subject: 'Mathematics', score: 78 },
-                                            { subject: 'Science', score: 82 },
-                                            { subject: 'English', score: 85 },
-                                            { subject: 'History', score: 72 },
-                                            { subject: 'Art', score: 91 },
-                                            { subject: 'Physics', score: 75 }
-                                        ]}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                                            <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} domain={[0, 100]} />
-                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                                            <Bar dataKey="score" radius={[6, 6, 0, 0]} barSize={32}>
-                                                {(Array.from({length: 6})).map((_, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
+                    <motion.div key="academic" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
 
-                            {/* Grade Distribution */}
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Grade Distribution</h3>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Student density by grade bracket</p>
-                                <div style={{ height: '350px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <RePieChart>
-                                            <Pie
-                                                data={[
-                                                    { name: 'A (90-100)', value: 15 },
-                                                    { name: 'B (80-89)', value: 35 },
-                                                    { name: 'C (70-79)', value: 30 },
-                                                    { name: 'D (60-69)', value: 15 },
-                                                    { name: 'F (<60)', value: 5 }
-                                                ]}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={100}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                {(Array.from({length: 5})).map((_, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip />
-                                        </RePieChart>
-                                    </ResponsiveContainer>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '16px' }}>
-                                        {['A', 'B', 'C', 'D', 'F'].map((g, i) => (
-                                            <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORS[i % COLORS.length] }} />
-                                                {g}
-                                            </div>
-                                        ))}
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
+                            <SectionCard title="Subject Proficiency Matrix" sub="Average score per department">
+                                {charts.subject_performance?.length > 0 ? (
+                                    <div style={{ height: 340 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={charts.subject_performance} margin={{ left: -10 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F0FF" />
+                                                <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#9B8FC0' }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} domain={[0, 100]} />
+                                                <Tooltip content={<ChartTip />} cursor={{ fill: 'rgba(124,58,237,0.04)' }} />
+                                                <Bar dataKey="score" radius={[6, 6, 0, 0]} barSize={32}>
+                                                    {charts.subject_performance.map((_, i) => (
+                                                        <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
                                     </div>
-                                </div>
-                            </Card>
+                                ) : <EmptyChart message="No subject performance data." />}
+                            </SectionCard>
+
+                            <SectionCard title="Grade Distribution" sub="Student density by score bracket">
+                                {charts.grade_distribution?.some(d => d.value > 0) ? (
+                                    <>
+                                        <div style={{ height: 260 }}>
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <RePieChart>
+                                                    <Pie data={charts.grade_distribution} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={4} dataKey="value">
+                                                        {charts.grade_distribution.map((_, i) => (
+                                                            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip />
+                                                </RePieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                                            {charts.grade_distribution.map((item, i) => (
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.73rem', fontWeight: 700, color: '#6B5B9A' }}>
+                                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: PALETTE[i % PALETTE.length] }} />
+                                                    {item.name}
+                                                    <span style={{ color: '#B0A8CC' }}>({item.value})</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : <EmptyChart message="No grade data for this selection." />}
+                            </SectionCard>
                         </div>
 
-                        <div className="grid-3" style={{ marginBottom: '32px' }}>
-                            <Card style={{ padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7', background: '#F0FDF4' }}>
-                                <div style={{ color: '#10B981', marginBottom: '12px' }}><Award size={24} /></div>
-                                <h4 style={{ margin: '0 0 4px 0', color: '#065F46' }}>High Proficiency Subject</h4>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#047857' }}>Visual Arts</div>
-                                <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', color: '#065F46', opacity: 0.8 }}>91% avg. proficiency across all sections.</p>
-                            </Card>
-                            <Card style={{ padding: '24px', borderRadius: '20px', border: '1px solid #FEF3C7', background: '#FFFBEB' }}>
-                                <div style={{ color: '#F59E0B', marginBottom: '12px' }}><Activity size={24} /></div>
-                                <h4 style={{ margin: '0 0 4px 0', color: '#92400E' }}>Most Improved Subject</h4>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#B45309' }}>English Lit.</div>
-                                <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', color: '#92400E', opacity: 0.8 }}>+14% growth compared to Term 1.</p>
-                            </Card>
-                            <Card style={{ padding: '24px', borderRadius: '20px', border: '1px solid #FEE2E2', background: '#FEF2F2' }}>
-                                <div style={{ color: '#EF4444', marginBottom: '12px' }}><AlertTriangle size={24} /></div>
-                                <h4 style={{ margin: '0 0 4px 0', color: '#991B1B' }}>Attention Required</h4>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#B91C1C' }}>Mathematics</div>
-                                <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', color: '#991B1B', opacity: 0.8 }}>78% avg. Critical gap in Grade 9 Geometry.</p>
-                            </Card>
+                        {/* Subject highlights */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+                            <HighlightCard
+                                color="#10B981" bgColor="#F0FDF4" borderColor="#DCFCE7"
+                                icon={<Award size={22} />}
+                                title="High Proficiency Subject"
+                                name={rankings?.subject_highlights?.best?.name ?? 'N/A'}
+                                detail={rankings?.subject_highlights?.best ? `${rankings.subject_highlights.best.score}% avg. across sections` : 'No data available.'}
+                            />
+                            <HighlightCard
+                                color="#F59E0B" bgColor="#FFFBEB" borderColor="#FEF3C7"
+                                icon={<Activity size={22} />}
+                                title="Most Improved Subject"
+                                name={rankings?.subject_highlights?.most_improved?.name ?? '—'}
+                                detail={rankings?.subject_highlights?.most_improved
+                                    ? `+${rankings.subject_highlights.most_improved.improvement}% vs previous year`
+                                    : 'No prior year data.'}
+                            />
+                            <HighlightCard
+                                color="#EF4444" bgColor="#FEF2F2" borderColor="#FEE2E2"
+                                icon={<AlertTriangle size={22} />}
+                                title="Needs Attention"
+                                name={rankings?.subject_highlights?.needs_attention?.name ?? 'N/A'}
+                                detail={rankings?.subject_highlights?.needs_attention
+                                    ? `${rankings.subject_highlights.needs_attention.score}% avg. Requires intervention.`
+                                    : 'No data available.'}
+                            />
                         </div>
                     </motion.div>
                 )}
 
+                {/* ══ OPERATIONS ════════════════════════════════════════ */}
                 {activeTab === 'operations' && (
-                    <motion.div
-                        key="operations"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                    >
-                        <div className="grid-2-1" style={{ marginBottom: '32px' }}>
-                            {/* Attendance Trend */}
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Institutional Attendance Velocity</h3>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Real-time student presence monitoring</p>
-                                <div style={{ height: '350px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={[
-                                            { day: 'Mon', rate: 94 },
-                                            { day: 'Tue', rate: 96 },
-                                            { day: 'Wed', rate: 92 },
-                                            { day: 'Thu', rate: 95 },
-                                            { day: 'Fri', rate: 89 },
-                                            { day: 'Sat', rate: 85 }
-                                        ]}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                                            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} domain={[80, 100]} />
-                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
-                                            <Line type="monotone" dataKey="rate" stroke="#10B981" strokeWidth={4} dot={{ r: 6, fill: '#10B981', strokeWidth: 3, stroke: '#fff' }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
+                    <motion.div key="operations" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
 
-                            {/* Enrollment Growth */}
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 800 }}>Enrollment Growth</h3>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '0.9rem' }}>Annual student registration volume</p>
-                                <div style={{ height: '350px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={charts.registration_trend}>
-                                            <XAxis dataKey="academic_year" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                                            <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} barSize={40} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
+                            <SectionCard title="Attendance by Day" sub="Average presence rate — weekdays only">
+                                {charts.attendance_trend?.length > 0 ? (
+                                    <div style={{ height: 320 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={charts.attendance_trend} margin={{ left: -10 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F0FF" />
+                                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#9B8FC0' }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} domain={[0, 100]} />
+                                                <Tooltip content={<ChartTip />} />
+                                                <Line type="monotone" dataKey="rate" stroke={PALETTE[2]} strokeWidth={3} dot={{ r: 6, fill: PALETTE[2], stroke: 'white', strokeWidth: 2 }} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : <EmptyChart message="No attendance records found." />}
+                            </SectionCard>
+
+                            <SectionCard title="Enrollment Growth" sub="Students registered per academic year">
+                                {charts.registration_trend?.length > 0 ? (
+                                    <div style={{ height: 320 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={charts.registration_trend} margin={{ left: -10 }}>
+                                                <XAxis dataKey="academic_year" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#9B8FC0' }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                                <Tooltip content={<ChartTip />} cursor={{ fill: 'rgba(124,58,237,0.04)' }} />
+                                                <Bar dataKey="count" fill={PALETTE[0]} radius={[6, 6, 0, 0]} barSize={36} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : <EmptyChart message="No enrollment history found." />}
+                            </SectionCard>
                         </div>
 
-                        <div className="grid-3" style={{ marginBottom: '32px' }}>
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h4 style={{ color: 'var(--text-muted)', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Teacher Load Index</h4>
-                                <div style={{ fontSize: '2rem', fontWeight: 900 }}>1:18</div>
-                                <div style={{ color: '#10B981', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <ArrowUpRight size={14} /> Within Optimal Range
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+                            <OpCard
+                                label="Teacher–Student Ratio"
+                                value={operations.teacher_student_ratio}
+                                sub="Within optimal range"
+                                subColor={PALETTE[2]}
+                                icon={<Users size={22} />}
+                                accent={PALETTE[1]}
+                            />
+                            <OpCard
+                                label="Active Subjects"
+                                value={num(metrics.total_subjects)}
+                                sub="Across all classes"
+                                subColor={PALETTE[0]}
+                                icon={<BookOpen size={22} />}
+                                accent={PALETTE[0]}
+                            />
+                            <div style={{
+                                background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                                borderRadius: 20, padding: '32px 28px', color: 'white',
+                                boxShadow: '0 8px 24px rgba(124,58,237,0.3)',
+                                position: 'relative', overflow: 'hidden',
+                            }}>
+                                <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.07)', borderRadius: '50%' }} />
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                                    Next Academic Year
                                 </div>
-                                <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Average ratio across primary and secondary departments.</p>
-                            </Card>
-                            <Card style={{ padding: '32px', borderRadius: '24px' }}>
-                                <h4 style={{ color: 'var(--text-muted)', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>System Health</h4>
-                                <div style={{ fontSize: '2rem', fontWeight: 900 }}>99.9%</div>
-                                <div style={{ color: '#10B981', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <ShieldCheck size={14} /> High Integrity
+                                <div style={{ fontSize: '1.6rem', fontWeight: 900 }}>
+                                    {operations.upcoming_year ?? 'Not scheduled yet'}
                                 </div>
-                                <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Zero critical server latency events detected in the last 72 hours.</p>
-                            </Card>
-                            <Card style={{ padding: '32px', borderRadius: '24px', background: 'var(--primary)', color: 'white' }}>
-                                <h4 style={{ color: 'white', opacity: 0.8, margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase' }}>Upcoming Audit</h4>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>May 15, 2026</div>
-                                <div style={{ marginTop: '16px', fontSize: '0.85rem' }}>Financial compliance review scheduled with the Academic Board.</div>
-                                <Button style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', width: '100%', marginTop: '20px' }}>
-                                    View Schedule
-                                </Button>
-                            </Card>
+                                <div style={{ marginTop: 14, fontSize: '0.82rem', opacity: 0.7, lineHeight: 1.5 }}>
+                                    Upcoming enrollment period for the next academic cycle.
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Floating Action for Quick Access */}
-            <div style={{ position: 'fixed', bottom: '32px', right: '32px', zIndex: 100 }}>
-                <Button 
-                    onClick={() => setActiveModal('faculty')}
-                    style={{ 
-                        width: '64px', 
-                        height: '64px', 
-                        borderRadius: '20px', 
-                        padding: 0,
-                        boxShadow: '0 10px 25px rgba(99, 102, 241, 0.4)',
-                        fontSize: '1.5rem'
-                    }}
-                >
-                    <Plus size={28} />
-                </Button>
-            </div>
-
-            {/* Modal for adding faculty */}
-            <Modal
-                isOpen={activeModal === 'faculty'}
-                onClose={() => setActiveModal(null)}
-                title="Strategic Onboarding"
-                width="500px"
-            >
-                <form onSubmit={handleFacultySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* ── ADD FACULTY MODAL ──────────────────────────────────────── */}
+            <Modal isOpen={activeModal === 'faculty'} onClose={() => setActiveModal(null)} title="Onboard New Member" width="480px">
+                <form onSubmit={handleFacultySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <FormField
-                        label="FULL LEGAL NAME"
-                        placeholder="Dr. Julian Vane"
-                        required
+                        label="Full Name" placeholder="Dr. Jane Doe" required
                         value={facultyForm.name}
                         onChange={e => setFacultyForm({ ...facultyForm, name: e.target.value })}
                     />
                     <FormField
-                        label="INSTITUTIONAL EMAIL"
-                        type="email"
-                        placeholder="j.vane@edugate.com"
-                        required
+                        label="Email Address" type="email" placeholder="jane@school.edu" required
                         value={facultyForm.email}
                         onChange={e => setFacultyForm({ ...facultyForm, email: e.target.value })}
                     />
                     <SelectField
-                        label="ASSIGNED ROLE"
+                        label="Role"
                         value={facultyForm.role}
                         onChange={e => setFacultyForm({ ...facultyForm, role: e.target.value })}
                     >
                         <option value="teacher">Faculty Member</option>
                         <option value="admin">System Administrator</option>
                     </SelectField>
-                    <Button type="submit" style={{ marginTop: '12px' }} disabled={isSubmitting}>
-                        {isSubmitting ? 'Processing...' : 'Authorize Onboarding'}
-                    </Button>
+                    <button
+                        type="submit" disabled={isSubmitting}
+                        style={{
+                            marginTop: 8, padding: '13px', borderRadius: 14, border: 'none',
+                            background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
+                            color: 'white', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer',
+                            opacity: isSubmitting ? 0.7 : 1, transition: 'opacity 0.2s',
+                        }}
+                    >
+                        {isSubmitting ? 'Processing…' : 'Authorize Onboarding'}
+                    </button>
                 </form>
             </Modal>
-        </motion.div>
+        </div>
     );
 };
+
+/* ─── Sub-components ────────────────────────────────────────────────── */
+
+const FilterSelect = ({ value, onChange, placeholder, options }) => (
+    <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+            padding: '8px 14px', borderRadius: 10, border: '1.5px solid #EDE9FF',
+            background: 'white', color: '#1a1230', fontWeight: 600, fontSize: '0.82rem',
+            cursor: 'pointer', outline: 'none', minWidth: 160,
+        }}
+    >
+        <option value="">{placeholder}</option>
+        {options.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+    </select>
+);
+
+const FilterChip = ({ label, onRemove }) => (
+    <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        background: '#EDE9FF', color: '#7C3AED', borderRadius: 999,
+        padding: '3px 10px 3px 12px', fontSize: '0.75rem', fontWeight: 700,
+    }}>
+        {label}
+        <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9B8FC0', display: 'flex', padding: 0 }}>
+            <X size={12} />
+        </button>
+    </span>
+);
+
+const SectionCard = ({ title, sub, titleIcon, dark, children }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{
+            background: dark ? '#1a1230' : 'white',
+            color: dark ? 'white' : '#1a1230',
+            borderRadius: 22,
+            padding: '28px 28px 24px',
+            border: dark ? 'none' : '1px solid #EDE9FF',
+            boxShadow: dark
+                ? '0 8px 32px rgba(26,18,48,0.25)'
+                : '0 2px 10px rgba(124,58,237,0.05)',
+        }}
+    >
+        <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                {titleIcon}
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: dark ? 'white' : '#1a1230' }}>
+                    {title}
+                </h3>
+            </div>
+            {sub && <p style={{ margin: 0, fontSize: '0.78rem', color: dark ? 'rgba(255,255,255,0.45)' : '#B0A8CC', fontWeight: 500 }}>{sub}</p>}
+        </div>
+        {children}
+    </motion.div>
+);
+
+const EmptyChart = ({ message }) => (
+    <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, color: '#B0A8CC' }}>
+        <BarChart3 size={32} strokeWidth={1.5} />
+        <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>{message}</p>
+    </div>
+);
+
+const HighlightCard = ({ color, bgColor, borderColor, icon, title, name, detail }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ padding: '26px 24px', borderRadius: 20, border: `1.5px solid ${borderColor}`, background: bgColor }}
+    >
+        <div style={{ color, marginBottom: 12 }}>{icon}</div>
+        <h4 style={{ margin: '0 0 6px 0', color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{title}</h4>
+        <div style={{ fontSize: '1.3rem', fontWeight: 900, color, marginBottom: 8 }}>{name}</div>
+        <p style={{ margin: 0, fontSize: '0.82rem', color, opacity: 0.75, lineHeight: 1.5 }}>{detail}</p>
+    </motion.div>
+);
+
+const OpCard = ({ label, value, sub, subColor, icon, accent }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ background: 'white', borderRadius: 20, padding: '32px 28px', border: '1px solid #EDE9FF', boxShadow: '0 2px 10px rgba(124,58,237,0.05)', position: 'relative', overflow: 'hidden' }}
+    >
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent }} />
+        <div style={{ color: accent, marginBottom: 14, background: accent + '12', width: 44, height: 44, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {icon}
+        </div>
+        <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B8FC0', marginBottom: 8 }}>{label}</div>
+        <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1a1230', lineHeight: 1 }}>{value}</div>
+        {sub && <div style={{ marginTop: 8, fontSize: '0.75rem', color: subColor, fontWeight: 700 }}>{sub}</div>}
+    </motion.div>
+);
 
 export default AdminDashboard;

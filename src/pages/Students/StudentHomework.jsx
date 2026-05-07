@@ -51,31 +51,38 @@ const StudentHomework = () => {
             });
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            const formData = new FormData();
-            formData.append('homework_id', selectedHw.id);
-            formData.append('content', content);
-            if (file) {
-                formData.append('file', file);
-            }
+   const handleSubmit = async (e) => {
+    e.preventDefault();
 
-            await client.post('/homework/submit', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+    const isLate = selectedHw?.due_date && new Date(selectedHw.due_date) < new Date();
+    if (isLate) {
+        const confirmed = window.confirm(
+            'The deadline for this assignment has passed. Your submission will be marked as late. Do you still want to submit?'
+        );
+        if (!confirmed) return;
+    }
 
-            setIsSubmissionModalOpen(false);
-            setContent('');
-            setFile(null);
-            fetchHomework(true);
-        } catch (error) {
-            alert('Failed to submit homework');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    setSubmitting(true);
+    try {
+        const formData = new FormData();
+        formData.append('homework_id', selectedHw.id);
+        formData.append('content', content);
+        if (file) formData.append('file', file);
+
+        await client.post('/homework/submit', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        setIsSubmissionModalOpen(false);
+        setContent('');
+        setFile(null);
+        fetchHomework(true);
+    } catch (error) {
+        alert('Failed to submit homework');
+    } finally {
+        setSubmitting(false);
+    }
+};
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -149,15 +156,17 @@ const StudentHomework = () => {
                                     <div style={{ padding: '28px', flex: 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
                                             <Badge bg="var(--primary-light)" color="var(--primary)" style={{ fontWeight: 800 }}>{hw.subject?.name || 'General'}</Badge>
-                                            {isGraded ? (
-                                                <Badge bg="#DCFCE7" color="#059669" style={{ fontWeight: 800 }}>Graded</Badge>
-                                            ) : (isSubmitted ? (
-                                                <Badge bg="#EFF6FF" color="#2563EB" style={{ fontWeight: 800 }}>Submitted</Badge>
-                                            ) : (isOverdue ? (
-                                                <Badge bg="#FEE2E2" color="#E11D48" style={{ fontWeight: 800 }}>Overdue</Badge>
-                                            ) : (
-                                                <Badge bg="#FFFBEB" color="#D97706" style={{ fontWeight: 800 }}>Pending</Badge>
-                                            )))}
+                                           {isGraded ? (
+    <Badge bg="#DCFCE7" color="#059669" style={{ fontWeight: 800 }}>Graded</Badge>
+) : isSubmitted ? (
+    submission?.is_late
+        ? <Badge bg="#FEF3C7" color="#B45309" style={{ fontWeight: 800 }}>Late Submission</Badge>
+        : <Badge bg="#EFF6FF" color="#2563EB" style={{ fontWeight: 800 }}>Submitted</Badge>
+) : isOverdue ? (
+    <Badge bg="#FEE2E2" color="#E11D48" style={{ fontWeight: 800 }}>Overdue</Badge>
+) : (
+    <Badge bg="#FFFBEB" color="#D97706" style={{ fontWeight: 800 }}>Pending</Badge>
+)}
                                         </div>
 
                                         <h3 style={{ margin: '0 0 12px 0', fontSize: '1.4rem', fontWeight: 800 }}>{hw.title}</h3>
@@ -210,19 +219,13 @@ const StudentHomework = () => {
                                             </div>
                                         </div>
 
-                                        {isGraded || isOverdue ? (
-    isOverdue && !isGraded ? (
-        <Badge bg="#FEE2E2" color="#E11D48" style={{ fontWeight: 800, padding: '8px 16px' }}>
-            Deadline Passed
-        </Badge>
-    ) : (
-        <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Result</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669' }}>
-                {Math.round(submission.score)} <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>/ 100</span>
-            </div>
+{isGraded ? (
+    <div style={{ textAlign: 'right' }}>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Result</div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669' }}>
+            {Math.round(submission.score)} <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>/ 100</span>
         </div>
-    )
+    </div>
 ) : (
     <Button
         onClick={() => {
@@ -233,7 +236,7 @@ const StudentHomework = () => {
         variant={isSubmitted ? 'outline' : 'primary'}
         style={{ borderRadius: '10px', padding: '10px 20px' }}
     >
-        {isSubmitted ? 'Update' : 'Submit'}
+        {isSubmitted ? 'Update' : isOverdue ? 'Submit Late' : 'Submit'}
         <Upload size={14} style={{ marginLeft: '8px' }} />
     </Button>
 )}

@@ -167,13 +167,19 @@ const HomeworkSubmissions = () => {
                                                         day: 'numeric'
                                                     })}
                                                 </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                                    <Clock size={14} />
-                                                    {new Date(sub.submitted_at || sub.created_at).toLocaleTimeString(undefined, {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })}
-                                                </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                <Clock size={14} />
+                                                {new Date(sub.submitted_at || sub.created_at).toLocaleTimeString(undefined, {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </div>
+                                            {sub.is_late && (
+                                                <Badge bg="#FEF3C7" color="#B45309" style={{ fontWeight: 700, fontSize: '0.7rem', padding: '2px 8px', width: 'fit-content' }}>
+                                                    ⚠ Late
+                                                </Badge>
+                                            )}
+
                                             </div>
                                         ) : (
                                             <Badge bg="#FEE2E2" color="#EF4444" style={{ fontWeight: 600, padding: '4px 10px' }}>
