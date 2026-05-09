@@ -10,11 +10,14 @@ import {
 import { useAuth, useTeacherDashboard } from '../../hooks';
 import { Link } from 'react-router-dom';
 import { Button, Badge, Avatar, Card } from '../../components/atoms';
+import { useState } from 'react';
 
 const TeacherDashboard = () => {
     const { user } = useAuth();
-    const { data, loading, error } = useTeacherDashboard();
 
+
+const [filters, setFilters] = useState({ class_id: '', subject_id: '' });
+const { data, loading, error } = useTeacherDashboard(filters);
     if (error) return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
             <div style={{ background: 'var(--danger-light)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
@@ -99,6 +102,93 @@ const TeacherDashboard = () => {
                     </div>
                 </motion.div>
             </header>
+            {data && (
+    <motion.div variants={itemVariants} style={{
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '32px',
+        background: 'white',
+        padding: '16px 20px',
+        borderRadius: '16px',
+        border: '1px solid var(--border-color)',
+        boxShadow: 'var(--shadow-sm)',
+        alignItems: 'center'
+    }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+            Filter By
+        </div>
+
+        <select
+            value={filters.class_id}
+            onChange={e => setFilters(f => ({ ...f, class_id: e.target.value, subject_id: '' }))}
+            style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--text-main)',
+                background: 'var(--bg-main)',
+                cursor: 'pointer',
+                outline: 'none'
+            }}
+        >
+            <option value="">All Classes</option>
+            {(data.filter_options?.classes || []).map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+        </select>
+
+        <select
+            value={filters.subject_id}
+            onChange={e => setFilters(f => ({ ...f, subject_id: e.target.value }))}
+            style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--text-main)',
+                background: 'var(--bg-main)',
+                cursor: 'pointer',
+                outline: 'none'
+            }}
+        >
+            <option value="">All Subjects</option>
+            {(data.filter_options?.subjects || []).map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+        </select>
+
+        {(filters.class_id || filters.subject_id) && (
+            <button
+                onClick={() => setFilters({ class_id: '', subject_id: '' })}
+                style={{
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'var(--danger-light)',
+                    color: 'var(--danger)',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                }}
+            >
+                Clear
+            </button>
+        )}
+
+        {filters.class_id || filters.subject_id ? (
+            <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700 }}>
+                Showing filtered attendance
+            </div>
+        ) : (
+            <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                Showing all your classes
+            </div>
+        )}
+    </motion.div>
+)}
 
             {/* Quick Stats Grid */}
             <motion.div variants={itemVariants} className="grid-4" style={{ marginBottom: '40px' }}>

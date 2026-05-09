@@ -49,7 +49,6 @@ const StatCard = ({ label, value, sub, icon, accent, delay = 0 }) => (
             overflow: 'hidden',
         }}
     >
-        {/* accent bar */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent }} />
         <div style={{
             width: 44, height: 44, borderRadius: 14, display: 'flex',
@@ -102,10 +101,9 @@ const AdminDashboard = () => {
     const [activeModal, setActiveModal] = useState(null);
     const [activeTab,   setActiveTab]   = useState('overview');
 
-    // Filters — classId is an integer (real FK), segment is a string
-    const [filters, setFilters] = useState({ classId: '', segment: 'All Students' });
-    const [classOptions,   setClassOptions]   = useState([]);
-    const [segmentOptions, setSegmentOptions] = useState(['All Students', 'High Performers', 'At Risk', 'New Enrollees']);
+    // Filters — classId only
+    const [filters, setFilters] = useState({ classId: '' });
+    const [classOptions, setClassOptions] = useState([]);
 
     const [facultyForm,  setFacultyForm]  = useState({ name: '', email: '', role: 'teacher' });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,19 +112,14 @@ const AdminDashboard = () => {
     const fetchData = useCallback(() => {
         setLoading(true);
         const params = {
-            ...(activeYear?.id ? { academic_year_id: activeYear.id } : {}),
-            ...(filters.classId   ? { class_id: filters.classId }   : {}),
-            ...(filters.segment !== 'All Students' ? { segment: filters.segment } : {}),
+            ...(activeYear?.id    ? { academic_year_id: activeYear.id } : {}),
+            ...(filters.classId   ? { class_id: filters.classId }       : {}),
         };
         client.get('/analytics/admin/overview', { params })
             .then(res => {
                 setData(res.data);
-                // populate dropdowns from real API response
                 if (res.data.filter_options?.classes) {
                     setClassOptions(res.data.filter_options.classes);
-                }
-                if (res.data.filter_options?.segments) {
-                    setSegmentOptions(res.data.filter_options.segments);
                 }
             })
             .catch(err => console.error(err))
@@ -164,7 +157,7 @@ const AdminDashboard = () => {
     );
 
     const { metrics, rankings, charts, insights, operations } = data;
-    const hasFilters = filters.classId || filters.segment !== 'All Students';
+    const hasFilters = !!filters.classId;
 
     /* ── active class label ──────────────────────────────────────────── */
     const activeClassLabel = filters.classId
@@ -193,7 +186,6 @@ const AdminDashboard = () => {
                     <p style={{ color: '#9B8FC0', fontSize: '0.9rem', margin: '0 0 0 18px', fontWeight: 500 }}>
                         {activeYear?.name ? `Academic Year ${activeYear.name}` : 'All Academic Years'}
                         {activeClassLabel && ` · ${activeClassLabel}`}
-                        {filters.segment !== 'All Students' && ` · ${filters.segment}`}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -251,28 +243,17 @@ const AdminDashboard = () => {
                     options={classOptions.map(c => ({ value: c.id, label: c.label }))}
                 />
 
-                {/* Segment filter */}
-                <FilterSelect
-                    value={filters.segment}
-                    onChange={v => setFilters(f => ({ ...f, segment: v }))}
-                    placeholder="All Students"
-                    options={segmentOptions.map(s => ({ value: s, label: s }))}
-                />
-
-                {/* Active filter chips */}
+                {/* Active filter chip */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                     {activeClassLabel && (
                         <FilterChip label={activeClassLabel} onRemove={() => setFilters(f => ({ ...f, classId: '' }))} />
-                    )}
-                    {filters.segment !== 'All Students' && (
-                        <FilterChip label={filters.segment} onRemove={() => setFilters(f => ({ ...f, segment: 'All Students' }))} />
                     )}
                 </div>
 
                 {hasFilters && (
                     <button
-                        onClick={() => setFilters({ classId: '', segment: 'All Students' })}
-                        style={{ background: 'none', border: 'none', color: '#9B8FC0', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8, transition: 'color 0.15s' }}
+                        onClick={() => setFilters({ classId: '' })}
+                        style={{ background: 'none', border: 'none', color: '#9B8FC0', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 8 }}
                     >
                         <X size={12} /> Clear all
                     </button>
@@ -282,9 +263,9 @@ const AdminDashboard = () => {
             {/* ── TABS ──────────────────────────────────────────────────── */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: 'white', borderRadius: 14, padding: 6, width: 'fit-content', border: '1px solid #EDE9FF' }}>
                 {[
-                    { id: 'overview',    label: 'Overview',    icon: <Globe size={15} /> },
-                    { id: 'academic',    label: 'Academic',    icon: <BarChart3 size={15} /> },
-                    { id: 'operations', label: 'Operations',   icon: <Zap size={15} /> },
+                    { id: 'overview',    label: 'Overview',  icon: <Globe size={15} /> },
+                    { id: 'academic',    label: 'Academic',  icon: <BarChart3 size={15} /> },
+                    { id: 'operations', label: 'Operations', icon: <Zap size={15} /> },
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -316,7 +297,6 @@ const AdminDashboard = () => {
                             borderRadius: 28, padding: '44px 48px', color: 'white',
                             marginBottom: 28, position: 'relative', overflow: 'hidden',
                         }}>
-                            {/* decorative blobs */}
                             <div style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, background: 'radial-gradient(circle, rgba(124,58,237,0.25) 0%, transparent 70%)', borderRadius: '50%' }} />
                             <div style={{ position: 'absolute', bottom: -80, left: '15%', width: 340, height: 340, background: 'radial-gradient(circle, rgba(14,165,233,0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
                             <div style={{ position: 'absolute', top: '20%', right: '20%', width: 160, height: 160, background: 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)', borderRadius: '50%' }} />
@@ -332,20 +312,6 @@ const AdminDashboard = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
-                                    <div>
-                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, opacity: 0.5, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
-                                            Strategic Growth Index
-                                        </div>
-                                        <div style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em' }}>
-{metrics.growth_index === null ? (
-    <span style={{ color: '#9B8FC0', fontSize: '2.5rem' }}>N/A</span>
-) : (
-    <span style={{ color: metrics.growth_index >= 0 ? '#4ADE80' : '#F87171' }}>
-        {metrics.growth_index > 0 ? '+' : ''}{metrics.growth_index}%
-    </span>
-)}
-                                        </div>
-                                    </div>
                                     <div style={{ paddingBottom: 8, opacity: 0.7, fontSize: '0.95rem', maxWidth: 520, lineHeight: 1.7 }}>
                                         Serving <strong style={{ color: 'white', opacity: 1 }}>{num(metrics.total_students)} students</strong> across{' '}
                                         <strong style={{ color: 'white', opacity: 1 }}>{metrics.total_classes} sections</strong> taught by{' '}
@@ -353,13 +319,12 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* mini stats row */}
                                 <div style={{ display: 'flex', gap: 32, marginTop: 32, flexWrap: 'wrap' }}>
                                     {[
-                                        { label: 'Attendance', value: pct(metrics.attendance_rate) },
+                                        { label: 'Attendance',  value: pct(metrics.attendance_rate)  },
                                         { label: 'Proficiency', value: pct(metrics.proficiency_rate) },
-                                        { label: 'Retention', value: pct(metrics.retention_rate) },
-                                        { label: 'Subjects', value: num(metrics.total_subjects) },
+                                        { label: 'Retention',   value: pct(metrics.retention_rate)   },
+                                        { label: 'Subjects',    value: num(metrics.total_subjects)   },
                                     ].map((m, i) => (
                                         <div key={i}>
                                             <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white' }}>{m.value}</div>
@@ -372,23 +337,21 @@ const AdminDashboard = () => {
 
                         {/* Stat cards */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
-                            <StatCard label="Attendance Rate"   value={pct(metrics.attendance_rate)}  sub="Global average"                   icon={<Activity size={20} />}     accent={PALETTE[2]} delay={0} />
-                            <StatCard label="Proficiency Rate"  value={pct(metrics.proficiency_rate)} sub="Students scoring ≥75%"             icon={<Target size={20} />}       accent={PALETTE[0]} delay={0.05} />
+                            <StatCard label="Attendance Rate"   value={pct(metrics.attendance_rate)}  sub="Global average"                            icon={<Activity size={20} />}      accent={PALETTE[2]} delay={0} />
+                            <StatCard label="Proficiency Rate"  value={pct(metrics.proficiency_rate)} sub="Students scoring ≥75%"                     icon={<Target size={20} />}        accent={PALETTE[0]} delay={0.05} />
                             <StatCard
-    label="Student Retention"
-    value={pct(metrics.retention_rate)}
-    sub={metrics.retention_rate === null ? 'No prior year to compare' : 'vs previous year'}
-    icon={<GraduationCap size={20} />}
-    accent={PALETTE[1]}
-    delay={0.1}
-/>
-                            <StatCard label="Faculty Members"   value={num(metrics.total_teachers)}   sub={`Ratio: ${operations.teacher_student_ratio}`} icon={<Users size={20} />}  accent={PALETTE[4]} delay={0.15} />
+                                label="Student Retention"
+                                value={pct(metrics.retention_rate)}
+                                sub={metrics.retention_rate === null ? 'No prior year to compare' : 'vs previous year'}
+                                icon={<GraduationCap size={20} />}
+                                accent={PALETTE[1]}
+                                delay={0.1}
+                            />
+                            <StatCard label="Faculty Members"   value={num(metrics.total_teachers)}   sub={`Ratio: ${operations.teacher_student_ratio}`} icon={<Users size={20} />}      accent={PALETTE[4]} delay={0.15} />
                         </div>
 
                         {/* Charts row */}
                         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
-
-                            {/* Performance trend */}
                             <SectionCard title="Performance Trend" sub="Average score by term across all grades">
                                 {charts.performance_trend?.length > 0 ? (
                                     <div style={{ height: 300 }}>
@@ -411,7 +374,6 @@ const AdminDashboard = () => {
                                 ) : <EmptyChart message="No grade data available for this selection." />}
                             </SectionCard>
 
-                            {/* Capacity utilization */}
                             <SectionCard title="Class Enrollment" sub="Students per section">
                                 {charts.students_by_class?.length > 0 ? (
                                     <div style={{ height: 300 }}>
@@ -434,8 +396,6 @@ const AdminDashboard = () => {
 
                         {/* Bottom row */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-
-                            {/* Strategic Insights */}
                             <SectionCard title="Strategic Insights" titleIcon={<Zap size={16} color="#F59E0B" />} dark>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {insights?.length > 0 ? insights.map((ins, i) => (
@@ -464,7 +424,6 @@ const AdminDashboard = () => {
                                 </div>
                             </SectionCard>
 
-                            {/* Top Scholars */}
                             <SectionCard title="Top Scholars" titleIcon={<Award size={16} color={PALETTE[0]} />}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                     {rankings?.best_students?.length > 0 ? rankings.best_students.map((s, i) => (
@@ -493,7 +452,6 @@ const AdminDashboard = () => {
                                 </div>
                             </SectionCard>
 
-                            {/* Class Efficiency */}
                             <SectionCard title="Class Efficiency" titleIcon={<Activity size={16} color={PALETTE[2]} />}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                                     {rankings?.top_classes?.length > 0 ? rankings.top_classes.map((cls, i) => (
@@ -527,7 +485,6 @@ const AdminDashboard = () => {
                 {/* ══ ACADEMIC ══════════════════════════════════════════ */}
                 {activeTab === 'academic' && (
                     <motion.div key="academic" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-
                         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
                             <SectionCard title="Subject Proficiency Matrix" sub="Average score per department">
                                 {charts.subject_performance?.length > 0 ? (
@@ -578,7 +535,6 @@ const AdminDashboard = () => {
                             </SectionCard>
                         </div>
 
-                        {/* Subject highlights */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
                             <HighlightCard
                                 color="#10B981" bgColor="#F0FDF4" borderColor="#DCFCE7"
@@ -612,7 +568,6 @@ const AdminDashboard = () => {
                 {/* ══ OPERATIONS ════════════════════════════════════════ */}
                 {activeTab === 'operations' && (
                     <motion.div key="operations" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-
                         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 28 }}>
                             <SectionCard title="Attendance by Day" sub="Average presence rate — weekdays only">
                                 {charts.attendance_trend?.length > 0 ? (

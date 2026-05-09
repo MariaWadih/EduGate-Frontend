@@ -271,11 +271,10 @@ const StudentDashboard = () => {
                                     </div>
                                     <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', gap: '12px' }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                                                <Clock size={14} /> 4h / week
-                                            </span>
+
                                         </div>
-                                        <Button variant="outline" size="small" style={{ borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>Syllabus</Button>
+                                        
+                                        <Button onClick={() => navigate(`/student/materials?subject_id=${course.id}`)} variant="outline" size="small" style={{ borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>Syllabus</Button>
                                     </div>
                                 </Card>
                             ))}

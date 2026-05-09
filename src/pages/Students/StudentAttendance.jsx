@@ -138,16 +138,7 @@ const StudentAttendance = () => {
                     <Badge bg="var(--primary-light)" color="var(--primary)" style={{ marginBottom: '16px', fontWeight: 800 }}>ATTENDANCE ANALYTICS</Badge>
                     <h1 style={{ fontSize: '3rem', fontWeight: 900, margin: 0, letterSpacing: '-0.04em' }}>Performance <span style={{ color: 'var(--primary)' }}>Insights</span></h1>
                 </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    <Button
-                        variant="primary"
-                        icon={BarChart3}
-                        onClick={() => setIsAnalysisOpen(true)}
-                        style={{ borderRadius: '14px' }}
-                    >
-                        Deep Analysis
-                    </Button>
-                </div>
+
             </header>
 
             {/* Top Stat Cards */}
@@ -387,77 +378,7 @@ const StudentAttendance = () => {
                     </motion.div>
                 </div>
             </div>
-            {/* Deep Analysis Modal */}
-            <Modal
-                isOpen={isAnalysisOpen}
-                onClose={() => setIsAnalysisOpen(false)}
-                title="Deep Academic Correlation"
-                width="850px"
-            >
-                <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>
-                    Our AI models have correlated your attendance patterns with your academic performance across major subjects.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
-                    <div>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '24px' }}>Subject Performance Gap</h4>
-                        <div style={{ height: '300px' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                                    { subject: 'Math', A: 95, B: 80, fullMark: 100 },
-                                    { subject: 'Science', A: 98, B: 70, fullMark: 100 },
-                                    { subject: 'English', A: 85, B: 85, fullMark: 100 },
-                                    { subject: 'History', A: 80, B: 90, fullMark: 100 },
-                                    { subject: 'Arts', A: 90, B: 75, fullMark: 100 },
-                                ]}>
-                                    <PolarGrid stroke="#e2e8f0" />
-                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fontWeight: 700 }} />
-                                    <Radar name="Attendance" dataKey="A" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.5} />
-                                    <Radar name="GPA" dataKey="B" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
-                                    <Legend />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <Card style={{ padding: '24px', background: 'var(--bg-main)', border: 'none' }}>
-                            <h5 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 800 }}>Consistency Score</h5>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                                <span style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary)' }}>92.4</span>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>/ 100</span>
-                            </div>
-                            <p style={{ margin: '12px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                                You are in the top 5% of students for early morning class participation.
-                            </p>
-                        </Card>
-
-                        <div>
-                            <h5 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', fontWeight: 800 }}>Attendance vs Grades</h5>
-                            <div style={{ height: '140px' }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={[
-                                        { name: 'Mon', gap: 2 },
-                                        { name: 'Tue', gap: 5 },
-                                        { name: 'Wed', gap: 3 },
-                                        { name: 'Thu', gap: 8 },
-                                        { name: 'Fri', gap: 4 },
-                                    ]}>
-                                        <XAxis dataKey="name" hide />
-                                        <Tooltip labelStyle={{ display: 'none' }} />
-                                        <Bar dataKey="gap" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center' }}>
-                                Positive correlation detected on Thursday morning sessions.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-
-            </Modal>
+           
         </motion.div>
     );
 };

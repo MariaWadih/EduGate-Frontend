@@ -14,67 +14,72 @@ const MarkAttendance = () => {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
 
+    const [selectedSubjectId, setSelectedSubjectId] = useState('');
+const [subjects, setSubjects] = useState([]);
+
     useEffect(() => {
         teacherService.getMyClasses().then(res => setClasses(res.data));
     }, []);
 
 
-    const handleClassChange = (e) => {
-        const classId = e.target.value;
-        setSelectedClassId(classId);
-        if (classId) {
-            academicService.getClass(classId).then(res => {
-                setStudents(res.data.students);
+const handleClassChange = (e) => {
+    const classId = e.target.value;
+    setSelectedClassId(classId);
+    setSelectedSubjectId('');  // reset subject on class change
+    setSubjects([]);
+    if (classId) {
+        academicService.getClass(classId).then(res => {
+            setStudents(res.data.students);
+            setSubjects(res.data.subjects || []);
+        });
+    } else {
+        setStudents([]);
+        setAttendance({});
+        setRemarks({});
+    }
+};
+useEffect(() => {
+    if (!selectedClassId || !selectedSubjectId || !date) return;
+
+    teacherService.checkAttendance(selectedClassId, date, selectedSubjectId)
+        .then(res => {
+            const records = res.data;
+            const newAttendance = {};
+            const newRemarks = {};
+
+            students.forEach(s => {
+                const rec = records.find(r => r.student_id === s.id);
+                newAttendance[s.id] = rec ? rec.status : 'present';
+                newRemarks[s.id] = rec ? (rec.remarks || '') : '';
             });
-        } else {
-            setStudents([]);
-            setAttendance({});
-            setRemarks({});
-        }
-    };
 
-    useEffect(() => {
-        if (selectedClassId && date && students.length > 0) {
-            setLoading(true);
-            teacherService.checkAttendance(selectedClassId, date)
-                .then(res => {
-                    const records = res.data;
-                    const newAttendance = {};
-                    const newRemarks = {};
+            setAttendance(newAttendance);
+            setRemarks(newRemarks);
+        })
+        .catch(err => console.error(err));
+}, [selectedClassId, selectedSubjectId, date, students]);
 
-                    students.forEach(s => {
-                        const rec = records.find(r => r.student_id === s.id);
-                        newAttendance[s.id] = rec ? rec.status : 'present';
-                        newRemarks[s.id] = rec ? (rec.remarks || '') : '';
-                    });
+const submitAttendance = () => {
+    if (!selectedSubjectId) return alert('Please select a subject');
+    setLoading(true);
+    const records = Object.keys(attendance).map(id => ({
+        student_id: id,
+        status: attendance[id],
+        remarks: remarks[id] || ''
+    }));
 
-                    setAttendance(newAttendance);
-                    setRemarks(newRemarks);
-                })
-                .catch(err => console.error(err))
-                .finally(() => setLoading(false));
-        }
-    }, [selectedClassId, date, students]);
-
-    const submitAttendance = () => {
-        setLoading(true);
-        const records = Object.keys(attendance).map(id => ({
-            student_id: id,
-            status: attendance[id],
-            remarks: remarks[id] || ''
-        }));
-
-        teacherService.storeAttendance({
-            class_id: selectedClassId,
-            date,
-            records
-        }).then(() => {
-            alert('Attendance submitted successfully!');
-        }).catch(err => {
-            console.error(err);
-            alert('Failed to submit attendance');
-        }).finally(() => setLoading(false));
-    };
+    teacherService.storeAttendance({
+        class_id:   selectedClassId,
+        subject_id: selectedSubjectId,  // add
+        date,
+        records
+    }).then(() => {
+        alert('Attendance submitted successfully!');
+    }).catch(err => {
+        console.error(err);
+        alert('Failed to submit attendance');
+    }).finally(() => setLoading(false));
+};
 
     const statusColors = {
         present: { bg: 'var(--success)', text: 'white' },
@@ -107,6 +112,19 @@ const MarkAttendance = () => {
                         onChange={e => setDate(e.target.value)}
                     />
                 </div>
+
+                <div style={{ flex: 1 }}>
+    <SelectField
+        label="SELECT SUBJECT"
+        value={selectedSubjectId}
+        onChange={e => setSelectedSubjectId(e.target.value)}
+    >
+        <option value="">Choose a subject...</option>
+        {subjects.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+    </SelectField>
+</div>
             </Card>
 
             {students.length > 0 && (

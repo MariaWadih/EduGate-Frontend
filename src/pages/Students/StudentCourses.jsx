@@ -216,10 +216,7 @@ const StudentCourses = () => {
                                 </div>
 
                                 <div style={{ marginTop: 'auto', padding: '0 32px 28px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Clock size={14} /> 4.5h / week</span>
-                                        <span>{progress}% Complete</span>
-                                    </div>
+
                                     <div style={{ width: '100%', height: '6px', background: '#F1F5F9', borderRadius: '10px', overflow: 'hidden', marginBottom: '24px' }}>
                                         <motion.div
                                             initial={{ width: 0 }}

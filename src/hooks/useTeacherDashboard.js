@@ -1,6 +1,9 @@
-import { useFetch } from './useFetch';
 import { analyticsService } from '../services';
+import { useFetch } from './useFetch';
 
-export const useTeacherDashboard = () => {
-    return useFetch(analyticsService.getTeacherOverview);
+export const useTeacherDashboard = (filters = {}) => {
+    return useFetch(
+        () => analyticsService.getTeacherOverview(filters),
+        [filters.class_id, filters.subject_id]
+    );
 };

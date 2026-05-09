@@ -160,10 +160,10 @@ const handleAddSubject = async () => {
         setSelectedTeacherId('');
         setShowSubjectModal(false);
         await fetchHierarchy();
-    } catch (err) {
-        console.error('Failed to add subject:', err);
-        alert('Failed to add subject');
-    } finally {
+     } catch (err) {
+    const message = err.response?.data?.message || 'Failed to add subject';
+    alert(message);
+} finally {
         setLoading(false);
     }
 };
@@ -409,7 +409,8 @@ const handleAddSubject = async () => {
                                                 onClick={() => {
                                                     setActiveGrade(grade.name);
                                                     setShowSubjectModal(true);
-                                                    client.get('/teachers/list').then(res => setTeachers(res.data));
+client.get('/teachers/list')
+    .then(res => setTeachers(res.data));
                                                 }}
                                             >
                                                 Add Subject

@@ -2,7 +2,7 @@ import client from '../api/client';
 
 export const analyticsService = {
     getAdminOverview: () => client.get('/analytics/admin/overview'),
-    getTeacherOverview: () => client.get('/analytics/teacher/overview'),
+    getTeacherOverview: (params = {}) => client.get('/analytics/teacher/overview', { params }),
     getParentOverview: (studentId) => client.get(`/analytics/parent/overview?student_id=${studentId}`),
     getStudentOverview: () => client.get('/analytics/student/overview'),
     getHistoricalRecords: () => client.get('/analytics/admin/history'),
