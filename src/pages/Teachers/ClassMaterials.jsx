@@ -20,6 +20,7 @@ const ClassMaterials = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [classData, setClassData] = useState(null);
     const [expandedSections, setExpandedSections] = useState({});
+    const [sortMode, setSortMode] = useState('oldest');
 
     // Filter subjects to only those taught by the current teacher
     const teacherSubjects = React.useMemo(() => {
@@ -127,10 +128,36 @@ const ClassMaterials = () => {
         setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
+    const naturalCompare = (a = '', b = '') => (
+        String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    const sortedMaterials = React.useMemo(() => {
+        const ordered = [...materials];
+
+        if (sortMode === 'updated') {
+            return ordered.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+        }
+
+        if (sortMode === 'newest') {
+            return ordered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+
+        return ordered.sort((a, b) => {
+            const sectionOrder = naturalCompare(a.section || 'General Resources', b.section || 'General Resources');
+            if (sectionOrder !== 0) return sectionOrder;
+
+            const subSectionOrder = naturalCompare(a.sub_section || 'Default', b.sub_section || 'Default');
+            if (subSectionOrder !== 0) return subSectionOrder;
+
+            return new Date(a.created_at) - new Date(b.created_at);
+        });
+    }, [materials, sortMode]);
+
     // Group materials: { [section]: { [subSection]: [items] } }
     const groupedMaterials = React.useMemo(() => {
         const groups = {};
-        materials.forEach(m => {
+        sortedMaterials.forEach(m => {
             const sec = m.section || 'General Resources';
             const sub = m.sub_section || 'Default';
             if (!groups[sec]) groups[sec] = {};
@@ -138,7 +165,7 @@ const ClassMaterials = () => {
             groups[sec][sub].push(m);
         });
         return groups;
-    }, [materials]);
+    }, [sortedMaterials]);
 
     if (loading) return (
         <div style={{ padding: '120px 40px', textAlign: 'center' }}>
@@ -178,16 +205,28 @@ const ClassMaterials = () => {
                             Advanced curriculum management with nested modules and sections.
                         </p>
                     </div>
-                    <Button
-                        onClick={() => {
-                            setNewMaterial({ title: '', description: '', subject_id: filterSubjectId || teacherSubjects[0]?.id || '', section: '', sub_section: '' });
-                            setShowCreateModal(true);
-                        }}
-                        style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '1rem' }}
-                    >
-                        <Plus size={20} style={{ marginRight: '8px' }} />
-                        Create New Entry
-                    </Button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <select
+                            value={sortMode}
+                            onChange={e => setSortMode(e.target.value)}
+                            style={{ height: '48px', padding: '0 14px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 700, color: 'var(--text-main)', outline: 'none' }}
+                            aria-label="Sort curriculum resources"
+                        >
+                            <option value="oldest">Oldest First</option>
+                            <option value="updated">Recently Updated</option>
+                            <option value="newest">Newest First</option>
+                        </select>
+                        <Button
+                            onClick={() => {
+                                setNewMaterial({ title: '', description: '', subject_id: filterSubjectId || teacherSubjects[0]?.id || '', section: '', sub_section: '' });
+                                setShowCreateModal(true);
+                            }}
+                            style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '1rem' }}
+                        >
+                            <Plus size={20} style={{ marginRight: '8px' }} />
+                            Add Resource
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -201,7 +240,7 @@ const ClassMaterials = () => {
                         Organize your course into Modules and Chapters to help students navigate easily.
                     </p>
                     <Button variant="outline" onClick={() => setShowCreateModal(true)}>
-                        Create First Module
+                        Add First Resource
                     </Button>
                 </Card>
             ) : (
@@ -215,7 +254,7 @@ const ClassMaterials = () => {
                                     <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>{sectionName}</h2>
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => { setNewMaterial(p => ({ ...p, section: sectionName === 'General Resources' ? '' : sectionName, sub_section: '' })); setShowCreateModal(true); }} style={{ gap: '8px', color: 'var(--primary)', fontWeight: 700 }}>
-                                    <FolderPlus size={18} /> Add Module Item
+                                    <FolderPlus size={18} /> Add Resource
                                 </Button>
                             </div>
 
@@ -269,7 +308,7 @@ const ClassMaterials = () => {
             )}
 
             {showCreateModal && (
-                <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Advanced Upload" width="550px">
+                <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Add Resource" width="550px">
                     <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                             <div><Label>Main Module</Label><Input placeholder="e.g. Module 1" value={newMaterial.section} onChange={e => setNewMaterial({ ...newMaterial, section: e.target.value })} /></div>

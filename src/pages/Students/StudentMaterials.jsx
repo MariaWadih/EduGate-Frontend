@@ -68,9 +68,25 @@ const StudentMaterials = () => {
         return matchSearch && matchSubject;
     });
 
+    const naturalCompare = (a = '', b = '') => (
+        String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    const sortedMaterials = React.useMemo(() => {
+        return [...filteredMaterials].sort((a, b) => {
+            const sectionOrder = naturalCompare(a.section || 'General Resources', b.section || 'General Resources');
+            if (sectionOrder !== 0) return sectionOrder;
+
+            const subSectionOrder = naturalCompare(a.sub_section || 'Default', b.sub_section || 'Default');
+            if (subSectionOrder !== 0) return subSectionOrder;
+
+            return new Date(a.created_at) - new Date(b.created_at);
+        });
+    }, [filteredMaterials]);
+
     const groupedMaterials = React.useMemo(() => {
         const groups = {};
-        filteredMaterials.forEach(m => {
+        sortedMaterials.forEach(m => {
             const sec = m.section || 'General Resources';
             const sub = m.sub_section || 'Default';
             if (!groups[sec]) groups[sec] = {};
@@ -78,7 +94,7 @@ const StudentMaterials = () => {
             groups[sec][sub].push(m);
         });
         return groups;
-    }, [filteredMaterials]);
+    }, [sortedMaterials]);
 
     if (loading) return (
         <div style={{ height: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>

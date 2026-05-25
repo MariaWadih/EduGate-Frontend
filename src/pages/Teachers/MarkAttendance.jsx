@@ -27,10 +27,15 @@ const handleClassChange = (e) => {
     setSelectedClassId(classId);
     setSelectedSubjectId('');  // reset subject on class change
     setSubjects([]);
+    setAttendance({});
+    setRemarks({});
     if (classId) {
+        const selectedClass = classes.find(c => String(c.id) === String(classId));
+        setSubjects(selectedClass?.subjects || []);
+
         academicService.getClass(classId).then(res => {
             setStudents(res.data.students);
-            setSubjects(res.data.subjects || []);
+            setSubjects(res.data.subjects || selectedClass?.subjects || []);
         });
     } else {
         setStudents([]);
@@ -211,14 +216,16 @@ const submitAttendance = () => {
                             </tbody>
                         </table>
 
-                        <Button
-                            style={{ width: '100%', padding: '16px', height: 'auto', fontSize: '1rem', fontWeight: 700 }}
-                            disabled={loading}
-                            onClick={submitAttendance}
-                            icon={<Save size={20} />}
-                        >
-                            {loading ? 'Submitting...' : 'Save Attendance Records'}
-                        </Button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+                            <Button
+                                style={{ padding: '12px 20px', height: '44px', fontSize: '0.95rem', fontWeight: 700 }}
+                                disabled={loading}
+                                onClick={submitAttendance}
+                                icon={<Save size={18} />}
+                            >
+                                {loading ? 'Submitting...' : 'Save Attendance'}
+                            </Button>
+                        </div>
 
                     </div>
                 </Card>

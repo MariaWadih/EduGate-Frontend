@@ -163,7 +163,9 @@ const TeacherGrades = () => {
             const selectedClass = classes.find(c => c.id == selectedClassId);
             const selectedSubject = selectedClass?.subjects?.find(s => s.id == selectedSubjectId);
 
-            const className = selectedClass?.name || 'Unknown Class';
+            const className = selectedClass
+                ? `${selectedClass.name}${selectedClass.section ? ` - ${selectedClass.section}` : ''}`
+                : 'Unknown Class';
             const subjectName = selectedSubject?.name || 'Unknown Subject';
 
             doc.text(`Class: ${className}`, 14, 32);
@@ -231,7 +233,7 @@ const TeacherGrades = () => {
             if (c.subjects) {
                 c.subjects.forEach(s => {
                     options.push({
-                        label: `${c.name} - ${s.name}`,
+                        label: `${c.name}${c.section ? ` - ${c.section}` : ''} - ${s.name}`,
                         classId: c.id,
                         subjectId: s.id
                     });
